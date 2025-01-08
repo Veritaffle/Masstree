@@ -43,15 +43,19 @@
 #include "kvrandom.hh"
 #include "clp.h"
 
+/*
 const char *serverip = "127.0.0.1";
 static Json test_param;
+*/
 
+/*
 typedef void (*get_async_cb)(struct child *c, struct async *a,
                              bool has_val, const Str &val);
 typedef void (*put_async_cb)(struct child *c, struct async *a,
                              int status);
 typedef void (*remove_async_cb)(struct child *c, struct async *a,
                                 int status);
+
 
 struct async {
     int cmd; // Cmd_ constant
@@ -83,8 +87,11 @@ struct child {
 
     inline void check_flush();
 };
+*/
 
+/*
 void checkasync(struct child *c, int force);
+*/
 
 inline void child::check_flush() {
     if ((seq1_ & ((window - 1) >> 1)) == 0)
@@ -92,7 +99,7 @@ inline void child::check_flush() {
     while (seq1_ - seq0_ >= window)
         checkasync(this, 1);
 }
-
+/*
 void aget(struct child *, const Str &key, const Str &wanted, get_async_cb fn);
 void aget(struct child *c, long ikey, long iwanted, get_async_cb fn);
 void aget_col(struct child *c, const Str& key, int col, const Str& wanted,
@@ -128,7 +135,9 @@ void volt1b(struct child *);
 void volt2a(struct child *);
 void volt2b(struct child *);
 void scantest(struct child *);
+*/
 
+/*
 static int children = 1;
 static uint64_t nkeys = 0;
 static int prefixLen = 0;
@@ -150,8 +159,9 @@ static int rscale_partsz = 0;
 static int getratio = -1;
 static int minkeyletter = '0';
 static int maxkeyletter = '9';
+*/
 
-
+/*
 struct kvtest_client {
     kvtest_client(struct child& c)
         : c_(&c) {
@@ -375,6 +385,7 @@ struct kvtest_client {
     struct child *c_;
     Json report_;
 };
+*/
 
 
 #define TESTRUNNER_CLIENT_TYPE kvtest_client&
@@ -706,6 +717,90 @@ main(int argc, char *argv[])
   exit(0);
 }
 
+// Sets up c with a socket and connection.
+// Returns 0 on success.
+// Returns -1 on bind error.
+// Returns -2 on connect error.
+int setup_child(struct child &c, int childno)
+{
+    struct sockaddr_in sin;
+    int ret, yes = 1;
+    // struct child c;
+
+    bzero(&c, sizeof(c));
+    c.childno = childno;
+
+    if(udpflag){
+        c.udp = 1;
+        c.s = socket(AF_INET, SOCK_DGRAM, 0);
+    } else {
+        c.s = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    if (first_local_port) {
+        bzero(&sin, sizeof(sin));
+        sin.sin_family = AF_INET;
+        sin.sin_port = htons(first_local_port + (childno % 48));
+        ret = ::bind(c.s, (struct sockaddr *) &sin, sizeof(sin));
+        if (ret < 0) {
+        perror("bind");
+        // exit(1);
+        return(-1);
+        }
+    }
+
+    assert(c.s >= 0);
+    setsockopt(c.s, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
+
+    bzero(&sin, sizeof(sin));
+    sin.sin_family = AF_INET;
+    if (udpflag && !share_server_port)
+        sin.sin_port = htons(first_server_port + (childno % 48));
+    else
+        sin.sin_port = htons(first_server_port);
+    sin.sin_addr.s_addr = inet_addr(serverip);
+    ret = connect(c.s, (struct sockaddr *) &sin, sizeof(sin));
+    if(ret < 0){
+        perror("connect");
+        // exit(1);
+        return(-2);
+    }
+
+    //  TODO: the new here seems a little dangerous
+    c.conn = new KVConn(c.s, !udpflag);
+    // kvtest_client client(c);
+    
+    return(0);
+}
+
+void teardown_child(struct child &c)
+{
+    checkasync(&c, 2);
+    delete c.conn;
+    close(c.s);
+}
+
+#if true
+void
+run_child(testrunner* test, int childno)
+{
+    struct child c;
+    int ret;
+    ret = setup_child(c, childno);
+    if (ret < 0) {
+        exit(1);
+    }
+    kvtest_client client(c);
+
+    test->run(client);
+
+    // Moved to teardown_child()
+    // checkasync(&c, 2);
+    
+    teardown_child(c);
+}
+
+
+#else
 void
 run_child(testrunner* test, int childno)
 {
@@ -759,6 +854,7 @@ run_child(testrunner* test, int childno)
   delete c.conn;
   close(c.s);
 }
+#endif
 
 void KVConn::hard_check(int tryhard) {
     masstree_precondition(inbufpos_ == inbuflen_);
