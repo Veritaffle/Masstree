@@ -321,6 +321,9 @@ static int minkeyletter = '0';
 static int maxkeyletter = '9';
 
 struct kvtest_client {
+    kvtest_client()         //  TODO: this is dangerous and bad.
+        : c_(nullptr) {
+    }
     kvtest_client(struct child& c)
         : c_(&c) {
     }
@@ -544,7 +547,13 @@ struct kvtest_client {
     Json report_;
 };
 
+// Sets up c with socket and connection.
+// Returns 0 on success.
+// Returns -1 on bind failure.
+// Returns -2 on connect failure.
 int setup_child(struct child &c, int childno);
+
+// Must be called after setup_child().
 void teardown_child(struct child &c);
 
 #endif

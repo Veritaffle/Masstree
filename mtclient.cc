@@ -717,10 +717,6 @@ main(int argc, char *argv[])
   exit(0);
 }
 
-// Sets up c with a socket and connection.
-// Returns 0 on success.
-// Returns -1 on bind error.
-// Returns -2 on connect error.
 int setup_child(struct child &c, int childno)
 {
     struct sockaddr_in sin;
@@ -744,7 +740,7 @@ int setup_child(struct child &c, int childno)
         if (ret < 0) {
         perror("bind");
         // exit(1);
-        return(-1);
+        return -1;
         }
     }
 
@@ -762,14 +758,14 @@ int setup_child(struct child &c, int childno)
     if(ret < 0){
         perror("connect");
         // exit(1);
-        return(-2);
+        return -2;
     }
 
     //  TODO: the new here seems a little dangerous
     c.conn = new KVConn(c.s, !udpflag);
     // kvtest_client client(c);
     
-    return(0);
+    return 0;
 }
 
 void teardown_child(struct child &c)
@@ -784,8 +780,7 @@ void
 run_child(testrunner* test, int childno)
 {
     struct child c;
-    int ret;
-    ret = setup_child(c, childno);
+    int ret = setup_child(c, childno);
     if (ret < 0) {
         exit(1);
     }
@@ -795,12 +790,13 @@ run_child(testrunner* test, int childno)
 
     // Moved to teardown_child()
     // checkasync(&c, 2);
-    
+
     teardown_child(c);
 }
 
 
 #else
+/*
 void
 run_child(testrunner* test, int childno)
 {
@@ -854,6 +850,7 @@ run_child(testrunner* test, int childno)
   delete c.conn;
   close(c.s);
 }
+*/
 #endif
 
 void KVConn::hard_check(int tryhard) {
