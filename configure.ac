@@ -7,7 +7,9 @@ AC_CONFIG_FILES([GNUmakefile])
 AC_SUBST(ac_configure_args)
 
 ac_user_cxx=${CXX+y}
-if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O3"; fi
+#   TODO: nerfed to -O0 for debugging
+# if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O3"; fi
+if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O0"; fi
 
 AC_PROG_CC
 AC_PROG_CXX

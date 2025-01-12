@@ -52,3 +52,6 @@ GNUmakefile
 log
 tags
 results
+
+.vscode/
+notebook-mttest.json
