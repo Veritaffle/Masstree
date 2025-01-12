@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <mutex>
+#include <sys/unistd.h>
 #include "core/properties.h"
 
 using std::cout;
@@ -26,6 +27,7 @@ class BasicDB : public DB {
   void Init() {
     std::lock_guard<std::mutex> lock(mutex_);
     cout << "A new thread begins working." << endl;
+    cout << gettid() << endl;
   }
 
   int Read(const std::string &table, const std::string &key,

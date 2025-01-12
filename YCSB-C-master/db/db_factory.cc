@@ -14,6 +14,7 @@
 #include "db/redis_db.h"
 // #include "db/tbb_rand_db.h"
 // #include "db/tbb_scan_db.h"
+#include "db/masstree_db.h"
 
 using namespace std;
 using ycsbc::DB;
@@ -28,6 +29,9 @@ DB* DBFactory::CreateDB(utils::Properties &props) {
     int port = stoi(props["port"]);
     int slaves = stoi(props["slaves"]);
     return new RedisDB(props["host"].c_str(), port, slaves);
+  } else if (props["dbname"] == "masstree") {
+    //  TODO
+    return new MasstreeDB(props);
   // } else if (props["dbname"] == "tbb_rand") {
   //   return new TbbRandDB;
   // } else if (props["dbname"] == "tbb_scan") {
