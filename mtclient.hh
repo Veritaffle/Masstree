@@ -28,13 +28,6 @@
 #include <queue>
 #include <vector>
 
-//  LATER: why weren't these necessary before?
-#include "kvio.hh"
-#include <sys/unistd.h>
-using lcdf::Str;
-using lcdf::String;
-using lcdf::Json;
-
 class KVConn {
   public:
     KVConn(const char *server, int port, int target_core = -1)

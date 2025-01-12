@@ -21,7 +21,7 @@ endif
 LIBS = @LIBS@ -lm
 LDFLAGS = @LDFLAGS@
 
-all: test_atomics mtd mtclient mttest libmtbenchclient.so
+all: test_atomics mtd mtclient mttest
 
 %.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
@@ -37,19 +37,6 @@ libjson.a: json.o string.o straccum.o str.o msgpack.o \
 	@rm -f $@
 	$(AR) cr $@ $^
 	$(RANLIB) $@
-
-libmtbenchclient.so: mtbenchclient.o config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -shared $(LDFLAGS) -include config.h -o $@ $< testrunner.o mtclient.o kvio.o misc.o
-
-mtbenchclient.o: mtbenchclient.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(DEPCFLAGS) -include config.h -c -o $@ $<
-
-mtclient.o: mtclient.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(DEPCFLAGS) -include config.h -c -o $@ $<
-
-testrunner.o: testrunner.cc config.h $(DEPSDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(DEPCFLAGS) -include config.h -c -o $@ $<
-
 
 KVTREES = query_masstree.o \
 	value_string.o value_array.o value_versioned_array.o \
@@ -106,7 +93,7 @@ stamp-h: config.h.in config.status
 	echo > stamp-h
 
 clean:
-	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a libmtbenchclient.so
+	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
 	rm -rf .deps
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)
