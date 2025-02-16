@@ -654,10 +654,13 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
     }
 
     // Loop over internal nodes.
+//  descend:
     while (!v[sense].isleaf()) {
+        //  *in is the internode we're currently in
         const internode<P> *in = static_cast<const internode<P>*>(n[sense]);
         in->prefetch();
         int kp = internode<P>::bound_type::upper(ka, *in);
+        //  set n' and v'
         n[sense ^ 1] = in->child_[kp];
         if (!n[sense ^ 1]) {
             goto retry;
@@ -665,14 +668,18 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
         v[sense ^ 1] = n[sense ^ 1]->stable_annotated(ti.stable_fence());
 
         if (likely(!in->has_changed(v[sense]))) {
+            //  n.version (+) v <= "locked"
             sense ^= 1;
             continue;
         }
-
+        
+        //  v <- v''
         typename node_base<P>::nodeversion_type oldv = v[sense];
         v[sense] = in->stable_annotated(ti.stable_fence());
+
         if (unlikely(oldv.has_split(v[sense]))
             && in->stable_last_key_compare(ka, v[sense], ti) > 0) {
+            //  v''.vsplit != v.vsplit
             ti.mark(tc_root_retry);
             goto retry;
         } else {
@@ -680,6 +687,7 @@ inline leaf<P>* node_base<P>::reach_leaf(const key_type& ka,
         }
     }
 
+    //  escape = n[sense] is a border node
     version = v[sense];
     return const_cast<leaf<P> *>(static_cast<const leaf<P> *>(n[sense]));
 }

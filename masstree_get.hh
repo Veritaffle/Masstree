@@ -36,11 +36,13 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     n_->prefetch();
     perm_ = n_->permutation();
     kx = leaf<P>::bound_type::lower(ka_, *this);
+
     if (kx.p >= 0) {
         lv_ = n_->lv_[kx.p];
         lv_.prefetch(n_->keylenx_[kx.p]);
         match = n_->ksuf_matches(kx.p, ka_);
     } else
+        //  NOTFOUND
         match = 0;
     if (n_->has_changed(v_)) {
         ti.mark(threadcounter(tc_stable_leaf_insert + n_->simple_has_split(v_)));
@@ -49,10 +51,12 @@ bool unlocked_tcursor<P>::find_unlocked(threadinfo& ti)
     }
 
     if (match < 0) {
+        //  LAYER
         ka_.shift_by(-match);
         root = lv_.layer();
         goto retry;
     } else
+        //  VALUE
         return match;
 }
 
@@ -85,6 +89,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     perm = n_->permutation();
     fence();
     kx_ = leaf<P>::bound_type::lower(ka_, *n_);
+    
     if (kx_.p >= 0) {
         leafvalue<P> lv = n_->lv_[kx_.p];
         lv.prefetch(n_->keylenx_[kx_.p]);
