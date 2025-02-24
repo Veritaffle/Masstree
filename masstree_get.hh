@@ -77,6 +77,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     node_base<P>* root = const_cast<node_base<P>*>(root_);
     nodeversion_type v;
     permuter_type perm;
+    //  v and perm only needed locally since n_ is locked on return.
 
  retry:
     n_ = root->reach_leaf(ka_, v, ti);
@@ -87,7 +88,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
 
     n_->prefetch();
     perm = n_->permutation();
-    fence();
+    fence();    //  TODO: why was this put here?
     kx_ = leaf<P>::bound_type::lower(ka_, *n_);
     
     if (kx_.p >= 0) {
