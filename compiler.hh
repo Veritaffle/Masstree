@@ -74,35 +74,76 @@ inline int ffs_msb(unsigned long long x) {
 }
 
 
+
+//  THESIS: new standard stuff
+
+#define MO_RELAXED std::memory_order_relaxed
+#define MO_CONSUME std::memory_order_consume
+#define MO_ACQUIRE std::memory_order_acquire
+#define MO_RELEASE std::memory_order_release
+#define MO_ACQ_REL std::memory_order_acq_rel
+#define MO_SEQ_CST std::memory_order_seq_cst
+
+inline void modern_fence() {
+    //  TODO: is this the right memory order to use?
+    std::atomic_signal_fence(MO_ACQ_REL);
+}
+
+inline void modern_acquire_fence() {
+    std::atomic_signal_fence(MO_ACQUIRE);
+}
+
+inline void modern_release_fence() {
+    std::atomic_signal_fence(MO_RELEASE);
+}
+
+inline void modern_relax_fence() {
+    //  TODO: is this cheating?
+    std::atomic_signal_fence(MO_ACQ_REL);
+}
+
+struct modern_relax_fence_function {
+    void operator()() const {
+        modern_relax_fence();
+    }
+};
+
+//  end THESIS
+
+
+#define ALLOW_HANDROLLED_CONC 1
+
+#if ALLOW_HANDROLLED_CONC
 /** @brief Compiler fence.
  *
  * Prevents reordering of loads and stores by the compiler. Not intended to
  * synchronize the processor's caches. */
-// inline void fence() {
-//     asm volatile("" : : : "memory");
-// }
+inline void fence() {
+    asm volatile("" : : : "memory");
+}
 
 /** @brief Acquire fence. */
-// inline void acquire_fence() {
-//     asm volatile("" : : : "memory");
-// }
+inline void acquire_fence() {
+    asm volatile("" : : : "memory");
+}
 
 /** @brief Release fence. */
-// inline void release_fence() {
-//     asm volatile("" : : : "memory");
-// }
+inline void release_fence() {
+    asm volatile("" : : : "memory");
+}
 
 /** @brief Compiler fence that relaxes the processor.
 
     Use this in spinloops, for example. */
-// inline void relax_fence() {
-//     asm volatile("pause" : : : "memory"); // equivalent to "rep; nop"
-// }
+inline void relax_fence() {
+    asm volatile("pause" : : : "memory"); // equivalent to "rep; nop"
+}
 
 /** @brief Full memory fence. */
-// inline void memory_fence() {
-//     asm volatile("mfence" : : : "memory");
-// }
+inline void memory_fence() {
+    asm volatile("mfence" : : : "memory");
+}
+#endif
 
 /** @brief Do-nothing function object. */
 struct do_nothing {
@@ -144,278 +185,280 @@ struct backoff_fence_function {
     int count_;
 };
 
+#if ALLOW_HANDROLLED_CONC
+template <int SIZE, typename BARRIER> struct sized_compiler_operations;
 
-// template <int SIZE, typename BARRIER> struct sized_compiler_operations;
+template <typename B> struct sized_compiler_operations<1, B> {
+    typedef char type;
+    static inline type xchg(type* object, type new_value) {
+        asm volatile("xchgb %0,%1"
+                     : "+q" (new_value), "+m" (*object));
+        B()();
+        return new_value;
+    }
+    static inline type val_cmpxchg(type* object, type expected, type desired) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
+        asm volatile("lock; cmpxchgb %2,%1"
+                     : "+a" (expected), "+m" (*object)
+                     : "r" (desired) : "cc");
+        B()();
+        return expected;
+#else
+        return __sync_val_compare_and_swap(object, expected, desired);
+#endif
+    }
+    static inline bool bool_cmpxchg(type* object, type expected, type desired) {
+#if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
+        return __sync_bool_compare_and_swap(object, expected, desired);
+#else
+        bool result;
+        asm volatile("lock; cmpxchgb %3,%1; sete %b2"
+                     : "+a" (expected), "+m" (*object), "=q" (result)
+                     : "q" (desired) : "cc");
+        B()();
+        return result;
+#endif
+    }
+    static inline type fetch_and_add(type *object, type addend) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
+        asm volatile("lock; xaddb %0,%1"
+                     : "+q" (addend), "+m" (*object) : : "cc");
+        B()();
+        return addend;
+#else
+        return __sync_fetch_and_add(object, addend);
+#endif
+    }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+        asm volatile("lock; orb %0,%1"
+                     : "=r" (addend), "+m" (*object) : : "cc");
+        B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
+};
 
-// template <typename B> struct sized_compiler_operations<1, B> {
-//     typedef char type;
-//     static inline type xchg(type* object, type new_value) {
-//         asm volatile("xchgb %0,%1"
-//                      : "+q" (new_value), "+m" (*object));
-//         B()();
-//         return new_value;
-//     }
-//     static inline type val_cmpxchg(type* object, type expected, type desired) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
-//         asm volatile("lock; cmpxchgb %2,%1"
-//                      : "+a" (expected), "+m" (*object)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return expected;
-// #else
-//         return __sync_val_compare_and_swap(object, expected, desired);
-// #endif
-//     }
-//     static inline bool bool_cmpxchg(type* object, type expected, type desired) {
-// #if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
-//         return __sync_bool_compare_and_swap(object, expected, desired);
-// #else
-//         bool result;
-//         asm volatile("lock; cmpxchgb %3,%1; sete %b2"
-//                      : "+a" (expected), "+m" (*object), "=q" (result)
-//                      : "q" (desired) : "cc");
-//         B()();
-//         return result;
-// #endif
-//     }
-//     static inline type fetch_and_add(type *object, type addend) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
-//         asm volatile("lock; xaddb %0,%1"
-//                      : "+q" (addend), "+m" (*object) : : "cc");
-//         B()();
-//         return addend;
-// #else
-//         return __sync_fetch_and_add(object, addend);
-// #endif
-//     }
-//     static inline void atomic_or(type* object, type addend) {
-// #if __x86__
-//         asm volatile("lock; orb %0,%1"
-//                      : "=r" (addend), "+m" (*object) : : "cc");
-//         B()();
-// #else
-//         __sync_fetch_and_or(object, addend);
-// #endif
-//     }
-// };
+template <typename B> struct sized_compiler_operations<2, B> {
+#if SIZEOF_SHORT == 2
+    typedef short type;
+#else
+    typedef int16_t type;
+#endif
+    static inline type xchg(type* object, type new_value) {
+        asm volatile("xchgw %0,%1"
+                     : "+r" (new_value), "+m" (*object));
+        B()();
+        return new_value;
+    }
+    static inline type val_cmpxchg(type* object, type expected, type desired) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
+        asm volatile("lock; cmpxchgw %2,%1"
+                     : "+a" (expected), "+m" (*object)
+                     : "r" (desired) : "cc");
+        B()();
+        return expected;
+#else
+        return __sync_val_compare_and_swap(object, expected, desired);
+#endif
+    }
+    static inline bool bool_cmpxchg(type* object, type expected, type desired) {
+#if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
+        return __sync_bool_compare_and_swap(object, expected, desired);
+#else
+        bool result;
+        asm volatile("lock; cmpxchgw %3,%1; sete %b2"
+                     : "+a" (expected), "+m" (*object), "=q" (result)
+                     : "r" (desired) : "cc");
+        B()();
+        return result;
+#endif
+    }
+    static inline type fetch_and_add(type* object, type addend) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
+        asm volatile("lock; xaddw %0,%1"
+                     : "+r" (addend), "+m" (*object) : : "cc");
+        B()();
+        return addend;
+#else
+        return __sync_fetch_and_add(object, addend);
+#endif
+    }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+        asm volatile("lock; orw %0,%1"
+                     : "=r" (addend), "+m" (*object) : : "cc");
+        B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
+};
 
-// template <typename B> struct sized_compiler_operations<2, B> {
-// #if SIZEOF_SHORT == 2
-//     typedef short type;
-// #else
-//     typedef int16_t type;
-// #endif
-//     static inline type xchg(type* object, type new_value) {
-//         asm volatile("xchgw %0,%1"
-//                      : "+r" (new_value), "+m" (*object));
-//         B()();
-//         return new_value;
-//     }
-//     static inline type val_cmpxchg(type* object, type expected, type desired) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
-//         asm volatile("lock; cmpxchgw %2,%1"
-//                      : "+a" (expected), "+m" (*object)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return expected;
-// #else
-//         return __sync_val_compare_and_swap(object, expected, desired);
-// #endif
-//     }
-//     static inline bool bool_cmpxchg(type* object, type expected, type desired) {
-// #if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
-//         return __sync_bool_compare_and_swap(object, expected, desired);
-// #else
-//         bool result;
-//         asm volatile("lock; cmpxchgw %3,%1; sete %b2"
-//                      : "+a" (expected), "+m" (*object), "=q" (result)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return result;
-// #endif
-//     }
-//     static inline type fetch_and_add(type* object, type addend) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
-//         asm volatile("lock; xaddw %0,%1"
-//                      : "+r" (addend), "+m" (*object) : : "cc");
-//         B()();
-//         return addend;
-// #else
-//         return __sync_fetch_and_add(object, addend);
-// #endif
-//     }
-//     static inline void atomic_or(type* object, type addend) {
-// #if __x86__
-//         asm volatile("lock; orw %0,%1"
-//                      : "=r" (addend), "+m" (*object) : : "cc");
-//         B()();
-// #else
-//         __sync_fetch_and_or(object, addend);
-// #endif
-//     }
-// };
+template <typename B> struct sized_compiler_operations<4, B> {
+#if SIZEOF_INT == 4
+    typedef int type;
+#else
+    typedef int32_t type;
+#endif
+    static inline type xchg(type* object, type new_value) {
+        asm volatile("xchgl %0,%1"
+                     : "+r" (new_value), "+m" (*object));
+        B()();
+        return new_value;
+    }
+    static inline type val_cmpxchg(type* object, type expected, type desired) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
+        asm volatile("lock; cmpxchgl %2,%1"
+                     : "+a" (expected), "+m" (*object)
+                     : "r" (desired) : "cc");
+        B()();
+        return expected;
+#else
+        return __sync_val_compare_and_swap(object, expected, desired);
+#endif
+    }
+    static inline bool bool_cmpxchg(type* object, type expected, type desired) {
+#if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
+        return __sync_bool_compare_and_swap(object, expected, desired);
+#else
+        bool result;
+        asm volatile("lock; cmpxchgl %3,%1; sete %b2"
+                     : "+a" (expected), "+m" (*object), "=q" (result)
+                     : "r" (desired) : "cc");
+        B()();
+        return result;
+#endif
+    }
+    static inline type fetch_and_add(type *object, type addend) {
+#if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
+        asm volatile("lock; xaddl %0,%1"
+                     : "+r" (addend), "+m" (*object) : : "cc");
+        B()();
+        return addend;
+#else
+        return __sync_fetch_and_add(object, addend);
+#endif
+    }
+    static inline void atomic_or(type* object, type addend) {
+#if __x86__
+        asm volatile("lock; orl %0,%1"
+                     : "=r" (addend), "+m" (*object) : : "cc");
+        B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
+};
 
-// template <typename B> struct sized_compiler_operations<4, B> {
-// #if SIZEOF_INT == 4
-//     typedef int type;
-// #else
-//     typedef int32_t type;
-// #endif
-//     static inline type xchg(type* object, type new_value) {
-//         asm volatile("xchgl %0,%1"
-//                      : "+r" (new_value), "+m" (*object));
-//         B()();
-//         return new_value;
-//     }
-//     static inline type val_cmpxchg(type* object, type expected, type desired) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP)
-//         asm volatile("lock; cmpxchgl %2,%1"
-//                      : "+a" (expected), "+m" (*object)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return expected;
-// #else
-//         return __sync_val_compare_and_swap(object, expected, desired);
-// #endif
-//     }
-//     static inline bool bool_cmpxchg(type* object, type expected, type desired) {
-// #if HAVE___SYNC_BOOL_COMPARE_AND_SWAP && ALLOW___SYNC_BUILTINS
-//         return __sync_bool_compare_and_swap(object, expected, desired);
-// #else
-//         bool result;
-//         asm volatile("lock; cmpxchgl %3,%1; sete %b2"
-//                      : "+a" (expected), "+m" (*object), "=q" (result)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return result;
-// #endif
-//     }
-//     static inline type fetch_and_add(type *object, type addend) {
-// #if __x86__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD)
-//         asm volatile("lock; xaddl %0,%1"
-//                      : "+r" (addend), "+m" (*object) : : "cc");
-//         B()();
-//         return addend;
-// #else
-//         return __sync_fetch_and_add(object, addend);
-// #endif
-//     }
-//     static inline void atomic_or(type* object, type addend) {
-// #if __x86__
-//         asm volatile("lock; orl %0,%1"
-//                      : "=r" (addend), "+m" (*object) : : "cc");
-//         B()();
-// #else
-//         __sync_fetch_and_or(object, addend);
-// #endif
-//     }
-// };
+template <typename B> struct sized_compiler_operations<8, B> {
+#if SIZEOF_LONG_LONG == 8
+    typedef long long type;
+#elif SIZEOF_LONG == 8
+    typedef long type;
+#else
+    typedef int64_t type;
+#endif
+#if __x86_64__
+    static inline type xchg(type* object, type new_value) {
+        asm volatile("xchgq %0,%1"
+                     : "+r" (new_value), "+m" (*object));
+        B()();
+        return new_value;
+    }
+#endif
+    static inline type val_cmpxchg(type* object, type expected, type desired) {
+#if __x86_64__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP_8)
+        asm volatile("lock; cmpxchgq %2,%1"
+                     : "+a" (expected), "+m" (*object)
+                     : "r" (desired) : "cc");
+        B()();
+        return expected;
+#elif __i386__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP_8)
+        uint32_t expected_low(expected), expected_high(expected >> 32),
+            desired_low(desired), desired_high(desired >> 32);
+        asm volatile("lock; cmpxchg8b %2"
+                     : "+a" (expected_low), "+d" (expected_high), "+m" (*object)
+                     : "b" (desired_low), "c" (desired_high) : "cc");
+        B()();
+        return ((uint64_t) expected_high << 32) | expected_low;
+#elif HAVE___SYNC_VAL_COMPARE_AND_SWAP_8
+        return __sync_val_compare_and_swap(object, expected, desired);
+#endif
+    }
+    static inline bool bool_cmpxchg(type* object, type expected, type desired) {
+#if HAVE___SYNC_BOOL_COMPARE_AND_SWAP_8 && ALLOW___SYNC_BUILTINS
+        return __sync_bool_compare_and_swap(object, expected, desired);
+#elif __x86_64__
+        bool result;
+        asm volatile("lock; cmpxchgq %3,%1; sete %b2"
+                     : "+a" (expected), "+m" (*object), "=q" (result)
+                     : "r" (desired) : "cc");
+        B()();
+        return result;
+#else
+        uint32_t expected_low(expected), expected_high(expected >> 32),
+            desired_low(desired), desired_high(desired >> 32);
+        bool result;
+        asm volatile("lock; cmpxchg8b %2; sete %b4"
+                     : "+a" (expected_low), "+d" (expected_high),
+                       "+m" (*object), "=q" (result)
+                     : "b" (desired_low), "c" (desired_high) : "cc");
+        B()();
+        return result;
+#endif
+    }
+#if __x86_64__ || HAVE___SYNC_FETCH_AND_ADD_8
+    static inline type fetch_and_add(type* object, type addend) {
+# if __x86_64__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD_8)
+        asm volatile("lock; xaddq %0,%1"
+                     : "+r" (addend), "+m" (*object) : : "cc");
+        B()();
+        return addend;
+# else
+        return __sync_fetch_and_add(object, addend);
+# endif
+    }
+#endif
+#if __x86_64__ || HAVE___SYNC_FETCH_AND_OR_8
+    static inline void atomic_or(type* object, type addend) {
+#if __x86_64__
+        asm volatile("lock; orq %0,%1"
+                     : "=r" (addend), "+m" (*object) : : "cc");
+        B()();
+#else
+        __sync_fetch_and_or(object, addend);
+#endif
+    }
+#endif
+};
 
-// template <typename B> struct sized_compiler_operations<8, B> {
-// #if SIZEOF_LONG_LONG == 8
-//     typedef long long type;
-// #elif SIZEOF_LONG == 8
-//     typedef long type;
-// #else
-//     typedef int64_t type;
-// #endif
-// #if __x86_64__
-//     static inline type xchg(type* object, type new_value) {
-//         asm volatile("xchgq %0,%1"
-//                      : "+r" (new_value), "+m" (*object));
-//         B()();
-//         return new_value;
-//     }
-// #endif
-//     static inline type val_cmpxchg(type* object, type expected, type desired) {
-// #if __x86_64__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP_8)
-//         asm volatile("lock; cmpxchgq %2,%1"
-//                      : "+a" (expected), "+m" (*object)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return expected;
-// #elif __i386__ && (PREFER_X86 || !HAVE___SYNC_VAL_COMPARE_AND_SWAP_8)
-//         uint32_t expected_low(expected), expected_high(expected >> 32),
-//             desired_low(desired), desired_high(desired >> 32);
-//         asm volatile("lock; cmpxchg8b %2"
-//                      : "+a" (expected_low), "+d" (expected_high), "+m" (*object)
-//                      : "b" (desired_low), "c" (desired_high) : "cc");
-//         B()();
-//         return ((uint64_t) expected_high << 32) | expected_low;
-// #elif HAVE___SYNC_VAL_COMPARE_AND_SWAP_8
-//         return __sync_val_compare_and_swap(object, expected, desired);
-// #endif
-//     }
-//     static inline bool bool_cmpxchg(type* object, type expected, type desired) {
-// #if HAVE___SYNC_BOOL_COMPARE_AND_SWAP_8 && ALLOW___SYNC_BUILTINS
-//         return __sync_bool_compare_and_swap(object, expected, desired);
-// #elif __x86_64__
-//         bool result;
-//         asm volatile("lock; cmpxchgq %3,%1; sete %b2"
-//                      : "+a" (expected), "+m" (*object), "=q" (result)
-//                      : "r" (desired) : "cc");
-//         B()();
-//         return result;
-// #else
-//         uint32_t expected_low(expected), expected_high(expected >> 32),
-//             desired_low(desired), desired_high(desired >> 32);
-//         bool result;
-//         asm volatile("lock; cmpxchg8b %2; sete %b4"
-//                      : "+a" (expected_low), "+d" (expected_high),
-//                        "+m" (*object), "=q" (result)
-//                      : "b" (desired_low), "c" (desired_high) : "cc");
-//         B()();
-//         return result;
-// #endif
-//     }
-// #if __x86_64__ || HAVE___SYNC_FETCH_AND_ADD_8
-//     static inline type fetch_and_add(type* object, type addend) {
-// # if __x86_64__ && (PREFER_X86 || !HAVE___SYNC_FETCH_AND_ADD_8)
-//         asm volatile("lock; xaddq %0,%1"
-//                      : "+r" (addend), "+m" (*object) : : "cc");
-//         B()();
-//         return addend;
-// # else
-//         return __sync_fetch_and_add(object, addend);
-// # endif
-//     }
-// #endif
-// #if __x86_64__ || HAVE___SYNC_FETCH_AND_OR_8
-//     static inline void atomic_or(type* object, type addend) {
-// #if __x86_64__
-//         asm volatile("lock; orq %0,%1"
-//                      : "=r" (addend), "+m" (*object) : : "cc");
-//         B()();
-// #else
-//         __sync_fetch_and_or(object, addend);
-// #endif
-//     }
-// #endif
-// };
+template<typename T>
+inline T xchg(T* object, T new_value) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    return (T) sco_t::xchg((type*) object, (type) new_value);
+}
 
-// template<typename T>
-// inline T xchg(T* object, T new_value) {
-//     typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     return (T) sco_t::xchg((type*) object, (type) new_value);
-// }
+inline int8_t xchg(int8_t* object, int new_value) {
+    return xchg(object, (int8_t) new_value);
+}
+inline uint8_t xchg(uint8_t* object, int new_value) {
+    return xchg(object, (uint8_t) new_value);
+}
+inline int16_t xchg(int16_t* object, int new_value) {
+    return xchg(object, (int16_t) new_value);
+}
+inline uint16_t xchg(uint16_t* object, int new_value) {
+    return xchg(object, (uint16_t) new_value);
+}
+inline unsigned xchg(unsigned* object, int new_value) {
+    return xchg(object, (unsigned) new_value);
+}
+#endif
 
-// inline int8_t xchg(int8_t* object, int new_value) {
-//     return xchg(object, (int8_t) new_value);
-// }
-// inline uint8_t xchg(uint8_t* object, int new_value) {
-//     return xchg(object, (uint8_t) new_value);
-// }
-// inline int16_t xchg(int16_t* object, int new_value) {
-//     return xchg(object, (int16_t) new_value);
-// }
-// inline uint16_t xchg(uint16_t* object, int new_value) {
-//     return xchg(object, (uint16_t) new_value);
-// }
-// inline unsigned xchg(unsigned* object, int new_value) {
-//     return xchg(object, (unsigned) new_value);
-// }
-
+#if ALLOW_HANDROLLED_CONC
 /** @brief Atomic compare and exchange. Return actual old value.
  * @param object pointer to memory value
  * @param expected old value
@@ -429,16 +472,16 @@ struct backoff_fence_function {
  *    *object = desired;
  * return actual;
  * @endcode */
-// template <typename T>
-// inline T cmpxchg(T* object, T expected, T desired) {
-//     typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     return (T) sco_t::val_cmpxchg((type*) object, (type) expected, (type) desired);
-// }
+template <typename T>
+inline T cmpxchg(T* object, T expected, T desired) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    return (T) sco_t::val_cmpxchg((type*) object, (type) expected, (type) desired);
+}
 
-// inline unsigned cmpxchg(unsigned *object, int expected, int desired) {
-//     return cmpxchg(object, unsigned(expected), unsigned(desired));
-// }
+inline unsigned cmpxchg(unsigned *object, int expected, int desired) {
+    return cmpxchg(object, unsigned(expected), unsigned(desired));
+}
 
 /** @brief Atomic compare and exchange. Return true iff swap succeeds.
  * @param object pointer to memory value
@@ -455,71 +498,71 @@ struct backoff_fence_function {
  * } else
  *    return false;
  * @endcode */
-// template <typename T>
-// inline bool bool_cmpxchg(T* object, T expected, T desired) {
-//     typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     return sco_t::bool_cmpxchg((type*) object, (type) expected, (type) desired);
-// }
+template <typename T>
+inline bool bool_cmpxchg(T* object, T expected, T desired) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    return sco_t::bool_cmpxchg((type*) object, (type) expected, (type) desired);
+}
 
-// inline bool bool_cmpxchg(uint8_t* object, int expected, int desired) {
-//     return bool_cmpxchg(object, uint8_t(expected), uint8_t(desired));
-// }
-// inline bool bool_cmpxchg(unsigned *object, int expected, int desired) {
-//     return bool_cmpxchg(object, unsigned(expected), unsigned(desired));
-// }
+inline bool bool_cmpxchg(uint8_t* object, int expected, int desired) {
+    return bool_cmpxchg(object, uint8_t(expected), uint8_t(desired));
+}
+inline bool bool_cmpxchg(unsigned *object, int expected, int desired) {
+    return bool_cmpxchg(object, unsigned(expected), unsigned(desired));
+}
 
 /** @brief Atomic fetch-and-add. Return the old value.
  * @param object pointer to integer
  * @param addend value to add
  * @return old value */
-// template <typename T>
-// inline T fetch_and_add(T* object, T addend) {
-//     typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     return (T) sco_t::fetch_and_add((type*) object, (type) addend);
-// }
+template <typename T>
+inline T fetch_and_add(T* object, T addend) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    return (T) sco_t::fetch_and_add((type*) object, (type) addend);
+}
 
-// template <typename T>
-// inline T* fetch_and_add(T** object, int addend) {
-//     typedef sized_compiler_operations<sizeof(T*), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     return (T*) sco_t::fetch_and_add((type*) object, (type) (addend * sizeof(T)));
-// }
+template <typename T>
+inline T* fetch_and_add(T** object, int addend) {
+    typedef sized_compiler_operations<sizeof(T*), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    return (T*) sco_t::fetch_and_add((type*) object, (type) (addend * sizeof(T)));
+}
 
-// inline char fetch_and_add(char* object, int addend) {
-//     return fetch_and_add(object, (char) addend);
-// }
-// inline signed char fetch_and_add(signed char* object, int addend) {
-//     return fetch_and_add(object, (signed char) addend);
-// }
-// inline unsigned char fetch_and_add(unsigned char* object, int addend) {
-//     return fetch_and_add(object, (unsigned char) addend);
-// }
-// inline short fetch_and_add(short* object, int addend) {
-//     return fetch_and_add(object, (short) addend);
-// }
-// inline unsigned short fetch_and_add(unsigned short* object, int addend) {
-//     return fetch_and_add(object, (unsigned short) addend);
-// }
-// inline unsigned fetch_and_add(unsigned* object, int addend) {
-//     return fetch_and_add(object, (unsigned) addend);
-// }
-// inline long fetch_and_add(long* object, int addend) {
-//     return fetch_and_add(object, (long) addend);
-// }
-// inline unsigned long fetch_and_add(unsigned long* object, int addend) {
-//     return fetch_and_add(object, (unsigned long) addend);
-// }
-// #if SIZEOF_LONG_LONG <= 8
-// inline long long fetch_and_add(long long* object, int addend) {
-//     return fetch_and_add(object, (long long) addend);
-// }
-// inline unsigned long long fetch_and_add(unsigned long long* object, int addend) {
-//     return fetch_and_add(object, (unsigned long long) addend);
-// }
-// #endif
-
+inline char fetch_and_add(char* object, int addend) {
+    return fetch_and_add(object, (char) addend);
+}
+inline signed char fetch_and_add(signed char* object, int addend) {
+    return fetch_and_add(object, (signed char) addend);
+}
+inline unsigned char fetch_and_add(unsigned char* object, int addend) {
+    return fetch_and_add(object, (unsigned char) addend);
+}
+inline short fetch_and_add(short* object, int addend) {
+    return fetch_and_add(object, (short) addend);
+}
+inline unsigned short fetch_and_add(unsigned short* object, int addend) {
+    return fetch_and_add(object, (unsigned short) addend);
+}
+inline unsigned fetch_and_add(unsigned* object, int addend) {
+    return fetch_and_add(object, (unsigned) addend);
+}
+inline long fetch_and_add(long* object, int addend) {
+    return fetch_and_add(object, (long) addend);
+}
+inline unsigned long fetch_and_add(unsigned long* object, int addend) {
+    return fetch_and_add(object, (unsigned long) addend);
+}
+#if SIZEOF_LONG_LONG <= 8
+inline long long fetch_and_add(long long* object, int addend) {
+    return fetch_and_add(object, (long long) addend);
+}
+inline unsigned long long fetch_and_add(unsigned long long* object, int addend) {
+    return fetch_and_add(object, (unsigned long long) addend);
+}
+#endif
+#endif
 
 /** @brief Test-and-set lock acquire. */
 template <typename T>
@@ -538,36 +581,36 @@ inline void test_and_set_release(T* object) {
     *object = T();
 }
 
-
+#if ALLOW_HANDROLLED_CONC
 /** @brief Atomic fetch-and-or. Returns nothing.
  * @param object pointer to integer
  * @param addend value to or */
-// template <typename T>
-// inline void atomic_or(T* object, T addend) {
-//     typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
-//     typedef typename sco_t::type type;
-//     sco_t::atomic_or((type*) object, (type) addend);
-// }
+template <typename T>
+inline void atomic_or(T* object, T addend) {
+    typedef sized_compiler_operations<sizeof(T), fence_function> sco_t;
+    typedef typename sco_t::type type;
+    sco_t::atomic_or((type*) object, (type) addend);
+}
 
-// inline void atomic_or(int8_t* object, int addend) {
-//     atomic_or(object, int8_t(addend));
-// }
-// inline void atomic_or(uint8_t* object, int addend) {
-//     atomic_or(object, uint8_t(addend));
-// }
-// inline void atomic_or(int16_t* object, int addend) {
-//     atomic_or(object, int16_t(addend));
-// }
-// inline void atomic_or(uint16_t* object, int addend) {
-//     atomic_or(object, uint16_t(addend));
-// }
-// inline void atomic_or(unsigned* object, int addend) {
-//     atomic_or(object, unsigned(addend));
-// }
-// inline void atomic_or(unsigned long* object, int addend) {
-//     atomic_or(object, (unsigned long)(addend));
-// }
-
+inline void atomic_or(int8_t* object, int addend) {
+    atomic_or(object, int8_t(addend));
+}
+inline void atomic_or(uint8_t* object, int addend) {
+    atomic_or(object, uint8_t(addend));
+}
+inline void atomic_or(int16_t* object, int addend) {
+    atomic_or(object, int16_t(addend));
+}
+inline void atomic_or(uint16_t* object, int addend) {
+    atomic_or(object, uint16_t(addend));
+}
+inline void atomic_or(unsigned* object, int addend) {
+    atomic_or(object, unsigned(addend));
+}
+inline void atomic_or(unsigned long* object, int addend) {
+    atomic_or(object, (unsigned long)(addend));
+}
+#endif
 
 // prefetch instruction
 #if !PREFETCH_DEFINED
@@ -1215,5 +1258,6 @@ public:
 private:
     std::atomic<T> _v;
 };
+
 
 #endif
