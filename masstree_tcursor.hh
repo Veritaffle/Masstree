@@ -166,6 +166,10 @@ class tcursor {
     key_indexed_position kx_;
     node_base<P>* root_;
     int state_;
+    //  kx_ is unique to tcursor.
+    //  v_, perm_, lv_ are unique to unlocked_tcusor.
+    //  Since tcursor will have locked its node, the node can't be changed, so it can safely be read from.
+    //  unlocked_tcursor needs to store its own copies to use.
 
     leaf_type* original_n_;
     nodeversion_value_type original_v_;

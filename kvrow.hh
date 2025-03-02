@@ -235,6 +235,9 @@ inline bool query<R>::apply_replace(R*& value, bool found, Str new_value,
     }
 
     value = R::create1(new_value, qtimes_.ts, ti);
+    //  TODO: I'm pretty sure this is only valid because it's an aligned write
+    //  (to a pointer type), see Section 4.6.1.
+    //  Also compare to similar line in apply_put().
     return inserted;
 }
 

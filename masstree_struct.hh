@@ -108,10 +108,10 @@ class internode : public node_base<P> {
 
     uint8_t nkeys_;
     uint32_t height_;
-    ikey_type ikey0_[width];
-    node_base<P>* child_[width + 1];
-    node_base<P>* parent_;
-    kvtimestamp_t created_at_[P::debug_level > 0];
+    ikey_type ikey0_[width];                            //  uint64_t per struct nodeparams
+    node_base<P>* child_[width + 1];                    //  pointer to node_base (!)
+    node_base<P>* parent_;                              //  pointer to node_base (!)
+    kvtimestamp_t created_at_[P::debug_level > 0];      //  uint64_t per timestamp.hh
 
     internode(uint32_t height)
         : node_base<P>(false), nkeys_(0), height_(height), parent_() {
@@ -239,7 +239,7 @@ class leafvalue {
   private:
     union {
         node_base<P>* n;
-        value_type v;
+        value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
         uintptr_t x;
     } u_;
 };
@@ -268,19 +268,20 @@ class leaf : public node_base<P> {
     int8_t extrasize64_;
     uint8_t modstate_;
     uint8_t keylenx_[width];
-    typename permuter_type::storage_type permutation_;
-    ikey_type ikey0_[width];
-    leafvalue_type lv_[width];
-    external_ksuf_type* ksuf_;
+    typename permuter_type::storage_type permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
+    ikey_type ikey0_[width];                                        //  uint64_t per struct nodeparams
+    leafvalue_type lv_[width];                                      //  leafvalue<P> which is a struct (!)
+    external_ksuf_type* ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
     union {
         leaf<P>* ptr;
         uintptr_t x;
-    } next_;
-    leaf<P>* prev_;
-    node_base<P>* parent_;
-    phantom_epoch_type phantom_epoch_[P::need_phantom_epoch];
-    kvtimestamp_t created_at_[P::debug_level > 0];
-    internal_ksuf_type iksuf_[0];
+    } next_;                                                        //  union (!), which could be a pointer to leaf<P> (!)
+    leaf<P>* prev_;                                                 //  pointer to leaf<P>
+    node_base<P>* parent_;                                          //  pointer to node_base<P>
+    phantom_epoch_type phantom_epoch_[P::need_phantom_epoch];       //  uint64_t per struct nodeparams
+    kvtimestamp_t created_at_[P::debug_level > 0];                  //  uint64_t per timestamp.hh
+    internal_ksuf_type iksuf_[0];                                   //  "array" of class stringbag<uint8_t> (!)
+                                                                    //      will only ever contain one element
 
     leaf(size_t sz, phantom_epoch_type phantom_epoch)
         : node_base<P>(true), modstate_(modstate_insert),
@@ -735,8 +736,18 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     if ((ksuf_ && ksuf_->assign(p, s))
-        || (extrasize64_ > 0 && iksuf_[0].assign(p, s)))
+        || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
+        
+        //  TODO: remove
+        // if (!ksuf_) {
+        //     FILE* my_log_file = fopen("mylogfile.txt", "a");
+        //     fprintf(my_log_file, "%p %d %d\n", iksuf_, p, initializing);
+        //     fflush(my_log_file);
+        //     fclose(my_log_file);
+        // }
         return;
+    }
+        
 
     external_ksuf_type* oksuf = ksuf_;
 
