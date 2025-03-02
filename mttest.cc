@@ -733,11 +733,25 @@ void runtest(int nthreads, void* (*func)(void*)) {
         tis.push_back(threadinfo::make(threadinfo::TI_PROCESS, i));
     signal(SIGALRM, test_timeout);
     for (int i = 0; i < nthreads; ++i) {
-        int r = pthread_create(&tis[i]->pthread(), 0, func, tis[i]);
+        pthread_t pthread;
+        int r = pthread_create(&pthread, 0, func, tis[i]);
+        tis[i]->pthread().store(pthread, std::memory_order_relaxed);
         always_assert(r == 0);
     }
-    for (int i = 0; i < nthreads; ++i)
+    for (int i = 0; i < nthreads; ++i) {
+        //  TODO: the read to tis[i]->pthread() causes a data race.
+        
+        // std::atomic_ref<pthread_t> temp(tis[i]->pthread());
+        
+        // pthread_join(static_cast<const threadinfo*>(tis[i])->pthread(), 0);
+
+        // std::atomic_ref<pthread_t> temp(tis[i]->pthread());
+        // pthread_join(temp.load(), 0);
+
         pthread_join(tis[i]->pthread(), 0);
+    }
+    
+        
 }
 
 

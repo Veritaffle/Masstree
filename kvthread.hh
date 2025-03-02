@@ -281,7 +281,7 @@ class threadinfo {
     }
 
     // thread management
-    pthread_t& pthread() {
+    std::atomic<pthread_t>& pthread() {
         return pthreadid_;
     }
     pthread_t pthread() const {
@@ -304,10 +304,12 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            pthread_t pthreadid_;
+            // pthread_t pthreadid_;
         };
         char padding1[CACHE_LINE_SIZE];
     };
+    
+    std::atomic<pthread_t> pthreadid_;
 
     enum { pool_max_nlines = 20 };
     void* pool_[pool_max_nlines];
