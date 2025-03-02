@@ -31,8 +31,8 @@ class loginfo;
 typedef uint64_t mrcu_epoch_type;
 typedef int64_t mrcu_signed_epoch_type;
 
-extern relaxed_atomic<mrcu_epoch_type> globalepoch;  // global epoch, updated regularly
-extern relaxed_atomic<mrcu_epoch_type> active_epoch;
+extern old_relaxed_atomic<mrcu_epoch_type> globalepoch;  // global epoch, updated regularly
+extern old_relaxed_atomic<mrcu_epoch_type> active_epoch;
 
 struct limbo_group {
     typedef mrcu_epoch_type epoch_type;
@@ -285,7 +285,7 @@ class threadinfo {
         return s.pthreadid_;
     }
     pthread_t pthread() const {
-        return s.pthreadid_;
+        return s.pthreadid_.load(MO_RELAXED);
     }
 
     void report_rcu(void* ptr) const;

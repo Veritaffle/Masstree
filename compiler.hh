@@ -1236,25 +1236,25 @@ struct uninitialized_type {};
 
 
 template <typename T>
-struct relaxed_atomic {
+struct old_relaxed_atomic {
 public:
-    relaxed_atomic() : _v() {
+    old_relaxed_atomic() : _v() {
     }
-    relaxed_atomic(T v) : _v(v) {
+    old_relaxed_atomic(T v) : _v(v) {
     }
 
     T load() const {
         return _v.load(std::memory_order_relaxed);
     }
-    relaxed_atomic<T>& store(T v) {
+    old_relaxed_atomic<T>& store(T v) {
         _v.store(v, std::memory_order_relaxed);
         return *this;
     }
 
-    relaxed_atomic(const relaxed_atomic<T>&) = delete;
-    relaxed_atomic(relaxed_atomic<T>&&) = delete;
-    relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
-    relaxed_atomic<T>& operator=(relaxed_atomic<T>&&) = delete;
+    old_relaxed_atomic(const old_relaxed_atomic<T>&) = delete;
+    old_relaxed_atomic(old_relaxed_atomic<T>&&) = delete;
+    old_relaxed_atomic<T>& operator=(const old_relaxed_atomic<T>&) = delete;
+    old_relaxed_atomic<T>& operator=(old_relaxed_atomic<T>&&) = delete;
 private:
     std::atomic<T> _v;
 };

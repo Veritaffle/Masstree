@@ -90,8 +90,8 @@ static bool json_stats = false;
 static String gnuplot_yrange;
 static bool pinthreads = false;
 static nodeversion32 global_epoch_lock(false);
-relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
-relaxed_atomic<mrcu_epoch_type> active_epoch(1);
+old_relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
+old_relaxed_atomic<mrcu_epoch_type> active_epoch(1);
 kvepoch_t global_log_epoch = 0;
 static int port = 2117;
 static int rscale_ncores = 0;

@@ -233,9 +233,9 @@ class String : public String_base<String> {
   private:
     /** @cond never */
     struct memo_type {
-        relaxed_atomic<uint32_t> refcount;
+        old_relaxed_atomic<uint32_t> refcount;
         uint32_t capacity;
-        relaxed_atomic<uint32_t> dirty;
+        old_relaxed_atomic<uint32_t> dirty;
 #if HAVE_STRING_PROFILING > 1
         memo_type** pprev;
         memo_type* next;

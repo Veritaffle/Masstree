@@ -83,8 +83,8 @@ static std::vector<int> cores;
 static bool logging = true;
 static bool pinthreads = false;
 static bool recovery_only = false;
-relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
-relaxed_atomic<mrcu_epoch_type> active_epoch(1);
+old_relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
+old_relaxed_atomic<mrcu_epoch_type> active_epoch(1);
 static int port = 2117;
 static uint64_t test_limit = ~uint64_t(0);
 static int doprint = 0;
@@ -446,7 +446,10 @@ void runtest(const char *testname, int nthreads) {
     if (duration[0])
         xalarm(duration[0]);
     for (int i = 0; i < nthreads; ++i) {
-        int r = pthread_create(&clients[i].ti_->pthread(), 0, testgo, &clients[i]);
+        //  TODO: this pattern
+        // pthread_t temp;
+        int r = pthread_create(&temp, 0, testgo, &clients[i]);
+        // clients[i].ti_->pthread() = temp;
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i)
