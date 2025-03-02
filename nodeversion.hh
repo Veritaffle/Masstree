@@ -17,6 +17,14 @@
 #define MASSTREE_NODEVERSION_HH
 #include "compiler.hh"
 
+#define NODEVERSION_IMPL_HANDROLLED 1
+#define NODEVERSION_IMPL_FULLATOMIC 2
+#define NODEVERSION_IMPL_ATOMICFLAG 3
+
+#define NODEVERSION_IMPL NODEVERSION_IMPL_HANDROLLED
+
+#if NODEVERSION_IMPL == NODEVERSION_IMPL_HANDROLLED
+//  original implementation
 template <typename P>
 class nodeversion {
   public:
@@ -202,6 +210,239 @@ class nodeversion {
     }
 };
 
+#elif NODEVERSION_IMPL == NODEVERSION_IMPL_FULLATOMIC
+//  implementation with underlying datatype as atomic
+template <typename P>
+class nodeversion {
+  public:
+    typedef P traits_type;
+    typedef typename P::value_type value_type;
+
+    nodeversion() {
+    }
+
+    nodeversion(const nodeversion &n) :
+        v_(n.v_.load()) {
+    }
+
+    nodeversion<P>& operator=(const nodeversion<P>& other) {
+        v_.store(other.v_.load());
+        return *this;
+    }
+    
+    explicit nodeversion(bool isleaf) {
+        v_.store(isleaf ? (value_type) P::isleaf_bit : 0);
+    }
+
+    bool isleaf() const {
+        return v_.load() & P::isleaf_bit;
+    }
+
+    nodeversion<P> stable() const {
+        return stable(modern_relax_fence_function());
+    }
+    template <typename SF>
+    nodeversion<P> stable(SF spin_function) const {
+        value_type x = v_.load();
+        while (x & P::dirty_mask) {
+            spin_function();
+            x = v_.load();
+        }
+        modern_acquire_fence();
+        return x;
+    }
+    template <typename SF>
+    nodeversion<P> stable_annotated(SF spin_function) const {
+        value_type x = v_.load();
+        while (x & P::dirty_mask) {
+            spin_function(nodeversion<P>(x));
+            x = v_.load();
+        }
+        modern_acquire_fence();
+        return x;
+    }
+
+    bool locked() const {
+        return v_.load() & P::lock_bit;
+    }
+    bool inserting() const {
+        return v_.load() & P::inserting_bit;
+    }
+    bool splitting() const {
+        return v_.load() & P::splitting_bit;
+    }
+    bool deleted() const {
+        return v_.load() & P::deleted_bit;
+    }
+
+    bool has_changed(nodeversion<P> x) const {
+        modern_fence();
+        return (x.v_.load() ^ v_.load()) > P::lock_bit;
+    }
+    bool is_root() const {
+        return v_.load() & P::root_bit;
+    }
+    bool has_split(nodeversion<P> x) const {
+        modern_fence();
+        return (x.v_.load() ^ v_.load()) >= P::vsplit_lowbit;
+    }
+    bool simple_has_split(nodeversion<P> x) const {
+        return (x.v_.load() ^ v_.load()) >= P::vsplit_lowbit;
+    }
+
+    nodeversion<P> lock() {
+        //  TODO: is all this initialization of atomics going to hurt?
+        return lock(*this);
+    }
+    nodeversion<P> lock(nodeversion<P> expected) {
+        return lock(expected, modern_relax_fence_function());
+    }
+    template <typename SF>
+    nodeversion<P> lock(nodeversion<P> expected, SF spin_function) {
+        //  Spin until we acquire the lock.
+        while (true) {
+            //  If expected isn't locked
+            //  and we successfullly CAS the lock bit in this:
+            value_type expected_val = expected.v_.load();
+            if (!(expected_val & P::lock_bit)
+                && v_.compare_exchange_weak(expected_val,
+                                            expected_val | P::lock_bit)) {
+                //  Stop spinning.
+                break;
+            }
+            //  Else spin.
+            spin_function();
+            //  Update expected.
+            //  spin_function() (usually?) contains a fence so that expected isn't changed too early.
+            expected.v_.store(v_.load());
+        }
+
+        //  We (should) have successfully acquired the lock.
+        //  Verify that expected isn't dirty.
+        masstree_invariant(!(expected.v_.load() & P::dirty_mask));
+        //  Set lock bit in expected.
+        expected.v_.fetch_or(P::lock_bit);
+        //  Acquire fence, since we have acquired the lock.
+        modern_acquire_fence();
+        //  Verify that expected and this match.
+        masstree_invariant(expected.v_.load() == v_.load());
+        return expected;
+    }
+    
+    bool try_lock() {
+        return try_lock(modern_relax_fence_function());
+    }
+    template <typename SF>
+    bool try_lock(SF spin_function) {
+        value_type expected = v_.load();
+        if (!(expected & P::lock_bit)
+            && v_.compare_exchange_weak(expected,
+                                        expected | P::lock_bit)) {
+            masstree_invariant(!(expected & P::dirty_mask));
+            modern_acquire_fence();
+            masstree_invariant((expected | P::lock_bit) == v_.load());
+            return true;
+        } else {
+            spin_function();
+            return false;
+        }
+    }
+
+    void unlock() {
+        unlock(*this);
+    }
+    void unlock(nodeversion<P> x) {
+        masstree_invariant((modern_fence(), x.v_.load() == v_.load()));
+        masstree_invariant(x.v_.load() & P::lock_bit);
+        if (x.v_.load() & P::splitting_bit) {
+            //  TODO: these two are jank
+            // x.v_ = (x.v_ + P::vsplit_lowbit) & P::split_unlock_mask;
+
+            // int expected = x.v_.load(std::memory_order_relaxed);
+            // int desired;
+
+            // do {
+            //     desired = (expected + P::vsplit_lowbit) & P::split_unlock_mask;
+            // } while (!x.v_.compare_exchange_weak(expected, desired, std::memory_order_acquire, std::memory_order_relaxed));
+
+            x.v_.store((x.v_.load() + P::vsplit_lowbit) & P::split_unlock_mask);
+        }
+        else {
+            value_type prev = x.v_.load();
+            // x.v_ = (x.v_ + ((x.v_ & P::inserting_bit) << 2)) & P::unlock_mask;
+            x.v_.store((prev + ((prev & P::inserting_bit) << 2)) & P::unlock_mask);
+        }
+            
+        modern_release_fence();
+        v_.store(x.v_.load());
+    }
+
+    void mark_insert() {
+        masstree_invariant(locked());
+        v_.fetch_or(P::inserting_bit);
+        modern_acquire_fence();
+    }
+    nodeversion<P> mark_insert(nodeversion<P> current_version) {
+        masstree_invariant((modern_fence(), v_.load() == current_version.v_.load()));
+        masstree_invariant(current_version.v_.load() & P::lock_bit);
+        // v_ = (current_version.v_ |= P::inserting_bit);
+        v_.store(current_version.v_.fetch_or(P::inserting_bit) | P::inserting_bit);
+        modern_acquire_fence();
+        return current_version;
+    }
+    void mark_split() {
+        masstree_invariant(locked());
+        v_.fetch_or(P::splitting_bit);
+        modern_acquire_fence();
+    }
+    void mark_change(bool is_split) {
+        masstree_invariant(locked());
+        v_.fetch_or((is_split + 1) << P::inserting_shift);
+        modern_acquire_fence();
+    }
+    nodeversion<P> mark_deleted() {
+        masstree_invariant(locked());
+        v_.fetch_or(P::deleted_bit | P::splitting_bit);
+        modern_acquire_fence();
+        return *this;
+    }
+    void mark_deleted_tree() {
+        masstree_invariant(locked() && is_root());
+        v_.fetch_or(P::deleted_bit);
+        modern_acquire_fence();
+    }
+    void mark_root() {
+        v_.fetch_or(P::root_bit);
+        modern_acquire_fence();
+    }
+    void mark_nonroot() {
+        masstree_invariant(locked());
+        v_.fetch_and(~P::root_bit);
+        modern_acquire_fence();
+    }
+
+    void assign_version(nodeversion<P> x) {
+        v_.store(x.v_.load());
+    }
+
+    value_type version_value() const {
+        return v_.load();
+    }
+    value_type unlocked_version_value() const {
+        return v_.load() & P::unlock_mask;
+    }
+
+  private:
+    std::atomic<value_type> v_;
+
+    nodeversion(value_type v)
+        : v_(v) {
+    }
+};
+#elif NODEVERSION_IMPL == NODEVERSION_IMPL_ATOMICFLAG
+//  lock bit separated as atomic flag
+//  TODO: can I even do this?
+#endif
 
 template <typename P>
 class singlethreaded_nodeversion {
