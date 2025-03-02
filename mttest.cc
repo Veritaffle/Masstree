@@ -735,7 +735,7 @@ void runtest(int nthreads, void* (*func)(void*)) {
     for (int i = 0; i < nthreads; ++i) {
         pthread_t pthread;
         int r = pthread_create(&pthread, 0, func, tis[i]);
-        tis[i]->pthread().store(pthread, std::memory_order_relaxed);
+        tis[i]->pthread().store(pthread, MO_RELAXED);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i) {

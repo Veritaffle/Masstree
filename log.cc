@@ -217,7 +217,9 @@ void loginfo::initialize(const String& logfile) {
     f_.filename_.ref();
 
     ti_ = threadinfo::make(threadinfo::TI_LOG, logindex_);
-    int r = pthread_create(&ti_->pthread(), 0, trampoline, this);
+    pthread_t pthread;
+    int r = pthread_create(&pthread, 0, trampoline, this);
+    ti_->pthread().store(pthread, MO_RELAXED);
     always_assert(r == 0);
 }
 

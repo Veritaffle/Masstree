@@ -100,7 +100,7 @@ class threadinfo {
     static threadinfo* allthreads;
 
     threadinfo* next() const {
-        return next_;
+        return s.next_;
     }
 
     static threadinfo* make(int purpose, int index);
@@ -108,17 +108,17 @@ class threadinfo {
 
     // thread information
     int purpose() const {
-        return purpose_;
+        return s.purpose_;
     }
     int index() const {
-        return index_;
+        return s.index_;
     }
     loginfo* logger() const {
-        return logger_;
+        return s.logger_;
     }
     void set_logger(loginfo* logger) {
-        assert(!logger_ && logger);
-        logger_ = logger;
+        assert(!s.logger_ && logger);
+        s.logger_ = logger;
     }
 
     // timestamps
@@ -262,17 +262,17 @@ class threadinfo {
     enum { rcu_free_count = 128 }; // max # of entries to free per rcu_quiesce() call
     void rcu_start() {
         auto ge = globalepoch.load();
-        if (gc_epoch_ != ge)
-            gc_epoch_ = ge;
+        if (s.gc_epoch_ != ge)
+            s.gc_epoch_ = ge;
     }
     void rcu_stop() {
-        if (perform_gc_epoch_ != active_epoch.load())
+        if (s.perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
-        gc_epoch_ = 0;
+        s.gc_epoch_ = 0;
     }
     void rcu_quiesce() {
         rcu_start();
-        if (perform_gc_epoch_ != active_epoch.load())
+        if (s.perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
     }
     typedef ::mrcu_callback mrcu_callback;
@@ -282,10 +282,10 @@ class threadinfo {
 
     // thread management
     std::atomic<pthread_t>& pthread() {
-        return pthreadid_;
+        return s.pthreadid_;
     }
     pthread_t pthread() const {
-        return pthreadid_;
+        return s.pthreadid_;
     }
 
     void report_rcu(void* ptr) const;
@@ -304,12 +304,11 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            // pthread_t pthreadid_;
-        };
+            std::atomic<pthread_t> pthreadid_;
+        } s;
         char padding1[CACHE_LINE_SIZE];
     };
     
-    std::atomic<pthread_t> pthreadid_;
 
     enum { pool_max_nlines = 20 };
     void* pool_[pool_max_nlines];
@@ -371,7 +370,7 @@ inline mrcu_epoch_type threadinfo::min_active_epoch() {
     auto ae = globalepoch.load();
     for (threadinfo* ti = allthreads; ti; ti = ti->next()) {
         prefetch((const void*) ti->next());
-        mrcu_epoch_type te = ti->gc_epoch_;
+        mrcu_epoch_type te = ti->s.gc_epoch_;
         if (te && mrcu_signed_epoch_type(te - ae) < 0)
             ae = te;
     }
