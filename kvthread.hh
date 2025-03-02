@@ -31,8 +31,8 @@ class loginfo;
 typedef uint64_t mrcu_epoch_type;
 typedef int64_t mrcu_signed_epoch_type;
 
-extern old_relaxed_atomic<mrcu_epoch_type> globalepoch;  // global epoch, updated regularly
-extern old_relaxed_atomic<mrcu_epoch_type> active_epoch;
+extern relaxed_atomic<mrcu_epoch_type> globalepoch;  // global epoch, updated regularly
+extern relaxed_atomic<mrcu_epoch_type> active_epoch;
 
 struct limbo_group {
     typedef mrcu_epoch_type epoch_type;
@@ -281,11 +281,11 @@ class threadinfo {
     }
 
     // thread management
-    std::atomic<pthread_t>& pthread() {
+    relaxed_atomic<pthread_t>& pthread() {
         return s.pthreadid_;
     }
     pthread_t pthread() const {
-        return s.pthreadid_.load(MO_RELAXED);
+        return s.pthreadid_.load();
     }
 
     void report_rcu(void* ptr) const;
@@ -304,7 +304,7 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            std::atomic<pthread_t> pthreadid_;
+            relaxed_atomic<pthread_t> pthreadid_;
         } s;
         char padding1[CACHE_LINE_SIZE];
     };

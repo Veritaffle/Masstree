@@ -70,6 +70,9 @@
 #include <algorithm>
 #include <numeric>
 
+// TODO: new headers
+#include "atomic_pthread.hh"
+
 static std::vector<int> cores;
 volatile bool timeout[2] = {false, false};
 double duration[2] = {10, 0};
@@ -90,8 +93,8 @@ static bool json_stats = false;
 static String gnuplot_yrange;
 static bool pinthreads = false;
 static nodeversion32 global_epoch_lock(false);
-old_relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
-old_relaxed_atomic<mrcu_epoch_type> active_epoch(1);
+relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
+relaxed_atomic<mrcu_epoch_type> active_epoch(1);
 kvepoch_t global_log_epoch = 0;
 static int port = 2117;
 static int rscale_ncores = 0;
@@ -733,9 +736,11 @@ void runtest(int nthreads, void* (*func)(void*)) {
         tis.push_back(threadinfo::make(threadinfo::TI_PROCESS, i));
     signal(SIGALRM, test_timeout);
     for (int i = 0; i < nthreads; ++i) {
-        pthread_t pthread;
-        int r = pthread_create(&pthread, 0, func, tis[i]);
-        tis[i]->pthread().store(pthread, MO_RELAXED);
+        //  TODO: remove
+        // pthread_t pthread;
+        // int r = pthread_create(&pthread, 0, func, tis[i]);
+        // tis[i]->pthread().store(pthread, MO_RELAXED);
+        int r = pthread_create(tis[i]->pthread(), 0, func, tis[i]);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i) {

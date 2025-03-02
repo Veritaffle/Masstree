@@ -63,6 +63,10 @@
 #include "msgpack.hh"
 #include <algorithm>
 #include <deque>
+
+//  TODO new headers
+#include "atomic_pthread.hh"
+
 using lcdf::StringAccum;
 
 enum { CKState_Quit, CKState_Uninit, CKState_Ready, CKState_Go };
@@ -83,8 +87,8 @@ static std::vector<int> cores;
 static bool logging = true;
 static bool pinthreads = false;
 static bool recovery_only = false;
-old_relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
-old_relaxed_atomic<mrcu_epoch_type> active_epoch(1);
+relaxed_atomic<mrcu_epoch_type> globalepoch(1);     // global epoch, updated by main thread regularly
+relaxed_atomic<mrcu_epoch_type> active_epoch(1);
 static int port = 2117;
 static uint64_t test_limit = ~uint64_t(0);
 static int doprint = 0;
@@ -448,7 +452,7 @@ void runtest(const char *testname, int nthreads) {
     for (int i = 0; i < nthreads; ++i) {
         //  TODO: this pattern
         // pthread_t temp;
-        int r = pthread_create(&temp, 0, testgo, &clients[i]);
+        int r = pthread_create(clients[i].ti_->pthread(), 0, testgo, &clients[i]);
         // clients[i].ti_->pthread() = temp;
         always_assert(r == 0);
     }
@@ -766,7 +770,7 @@ main(int argc, char *argv[])
       printf("%d udp threads (ports %d-%d)\n", udpthreads, port, port + udpthreads - 1);
   for(i = 0; i < udpthreads; i++){
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
-    ret = pthread_create(&ti->pthread(), 0, udp_threadfunc, ti);
+    ret = pthread_create(ti->pthread(), 0, udp_threadfunc, ti);
     always_assert(ret == 0);
   }
 
@@ -812,7 +816,7 @@ main(int argc, char *argv[])
     threadinfo *ti = threadinfo::make(threadinfo::TI_PROCESS, i);
     ret = pipe(&tcp_thread_pipes[i * 2]);
     always_assert(ret == 0);
-    ret = pthread_create(&ti->pthread(), 0, tcp_threadfunc, ti);
+    ret = pthread_create(ti->pthread(), 0, tcp_threadfunc, ti);
     always_assert(ret == 0);
     tcpti[i] = ti;
   }
@@ -1264,7 +1268,7 @@ void log_init() {
     threadinfo *ti = threadinfo::make(threadinfo::TI_CHECKPOINT, i);
     cks[i].state = CKState_Uninit;
     cks[i].ti = ti;
-    ret = pthread_create(&ti->pthread(), 0, conc_checkpointer, ti);
+    ret = pthread_create(ti->pthread(), 0, conc_checkpointer, ti);
     always_assert(ret == 0);
   }
 }

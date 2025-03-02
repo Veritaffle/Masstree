@@ -56,7 +56,6 @@
 # define HAVE_INDIFFERENT_ALIGNMENT 1
 #endif
 
-
 /** @brief Return the index of the most significant bit set in @a x.
  * @return 0 if @a x = 0; otherwise the index of first bit set, where the
  * most significant bit is numbered 1.
@@ -73,8 +72,6 @@ inline int ffs_msb(unsigned long long x) {
     return (x ? __builtin_clzll(x) + 1 : 0);
 }
 
-
-
 //  THESIS: new standard stuff
 
 #define MO_RELAXED std::memory_order_relaxed
@@ -83,6 +80,43 @@ inline int ffs_msb(unsigned long long x) {
 #define MO_RELEASE std::memory_order_release
 #define MO_ACQ_REL std::memory_order_acq_rel
 #define MO_SEQ_CST std::memory_order_seq_cst
+
+
+
+//  this isn't new
+template <typename T>
+struct relaxed_atomic {
+public:
+    relaxed_atomic() : _v() {
+    }
+    relaxed_atomic(T v) : _v(v) {
+    }
+
+    T load() const {
+        return _v.load(MO_RELAXED);
+    }
+    relaxed_atomic<T>& store(T v) {
+        _v.store(v, MO_RELAXED);
+        return *this;
+    }
+
+    //  TODO: are these safe to use freely?
+    operator T() const noexcept {
+        return load();
+    }
+
+    relaxed_atomic<T>& operator=(const T v) {
+        return store(v);
+    }
+
+    relaxed_atomic(const relaxed_atomic<T>&) = delete;
+    relaxed_atomic(relaxed_atomic<T>&&) = delete;
+    relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
+    relaxed_atomic<T>& operator=(relaxed_atomic<T>&&) = delete;
+private:
+    std::atomic<T> _v;
+};
+
 
 inline void modern_fence() {
     //  TODO: is this the right memory order to use?
@@ -107,6 +141,11 @@ struct modern_relax_fence_function {
         modern_relax_fence();
     }
 };
+
+
+
+
+
 
 //  end THESIS
 
@@ -1233,31 +1272,6 @@ template <> struct has_fast_int_multiply<unsigned long long> : public mass::true
 #endif
 
 struct uninitialized_type {};
-
-
-template <typename T>
-struct old_relaxed_atomic {
-public:
-    old_relaxed_atomic() : _v() {
-    }
-    old_relaxed_atomic(T v) : _v(v) {
-    }
-
-    T load() const {
-        return _v.load(std::memory_order_relaxed);
-    }
-    old_relaxed_atomic<T>& store(T v) {
-        _v.store(v, std::memory_order_relaxed);
-        return *this;
-    }
-
-    old_relaxed_atomic(const old_relaxed_atomic<T>&) = delete;
-    old_relaxed_atomic(old_relaxed_atomic<T>&&) = delete;
-    old_relaxed_atomic<T>& operator=(const old_relaxed_atomic<T>&) = delete;
-    old_relaxed_atomic<T>& operator=(old_relaxed_atomic<T>&&) = delete;
-private:
-    std::atomic<T> _v;
-};
 
 
 #endif

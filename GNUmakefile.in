@@ -2,7 +2,7 @@ AR = ar
 CC = @CC@
 CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
-CXXFLAGS = @CXXFLAGS@ -pthread
+CXXFLAGS = @CXXFLAGS@ -pthread -fsanitize=thread -std=c++20
 RANLIB = @RANLIB@
 DEPSDIR := .deps
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
@@ -19,9 +19,15 @@ ifneq ($(strip $(NOSUPERPAGE)), )
   CPPFLAGS += -DNOSUPERPAGE
 endif
 LIBS = @LIBS@ -lm
-LDFLAGS = @LDFLAGS@
+LDFLAGS = @LDFLAGS@ -fsanitize=thread
 
-all: test_atomics mtd mtclient mttest
+BUILD_DIR = build
+SFILES := $(patsubst %.o,$(BUILD_DIR)/%.S,$(wildcard *.o))
+
+all: test_atomics mtd mtclient mttest foo
+
+foo: foo.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 %.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
@@ -29,7 +35,7 @@ all: test_atomics mtd mtclient mttest
 %.o: %.cc config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
-%.S: %.o
+$(BUILD_DIR)/%.S: %.o | $(BUILD_DIR)
 	objdump -S $< > $@
 
 libjson.a: json.o string.o straccum.o str.o msgpack.o \
@@ -43,14 +49,15 @@ KVTREES = query_masstree.o \
 	string_slice.o
 
 mtd: mtd.o log.o checkpoint.o file.o misc.o $(KVTREES) \
-	kvio.o libjson.a
+	kvio.o libjson.a atomic_pthread.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
-mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a
+mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a \
+	atomic_pthread.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 mttest: mttest.o misc.o checkpoint.o $(KVTREES) testrunner.o \
-	kvio.o libjson.a
+	kvio.o libjson.a atomic_pthread.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_string: test_string.o string.o straccum.o compiler.o
