@@ -164,8 +164,8 @@ __thread typename MasstreeWrapper::table_params::threadinfo_type* MasstreeWrappe
 bool MasstreeWrapper::stopping = false;
 uint32_t MasstreeWrapper::printing = 0;
 
-volatile mrcu_epoch_type active_epoch = 1;
-volatile uint64_t globalepoch = 1;
+relaxed_atomic<mrcu_epoch_type> active_epoch = 1;
+relaxed_atomic<mrcu_epoch_type> globalepoch = 1;
 volatile bool recovering = false;
 
 void test_thread(MasstreeWrapper* mt, int thread_id) {
