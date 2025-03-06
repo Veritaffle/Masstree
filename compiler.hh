@@ -82,6 +82,20 @@ using memory_order = std::memory_order;
 #define MO_ACQ_REL std::memory_order_acq_rel
 #define MO_SEQ_CST std::memory_order_seq_cst
 
+#define SHUTUP_TSAN 1
+#if SHUTUP_TSAN
+#define SHUTUP_TSAN_MO_CONSUME MO_CONSUME
+#define SHUTUP_TSAN_MO_ACQUIRE MO_ACQUIRE
+#define SHUTUP_TSAN_MO_RELEASE MO_RELEASE
+#define SHUTUP_TSAN_MO_ACQ_REL MO_ACQ_REL
+#define SHUTUP_TSAN_MO_SEQ_CST MO_SEQ_CST
+#else
+#define SHUTUP_TSAN_MO_CONSUME MO_RELAXED
+#define SHUTUP_TSAN_MO_ACQUIRE MO_RELAXED
+#define SHUTUP_TSAN_MO_RELEASE MO_RELAXED
+#define SHUTUP_TSAN_MO_ACQ_REL MO_RELAXED
+#define SHUTUP_TSAN_MO_SEQ_CST MO_RELAXED
+#endif
 
 
 //  this isn't new
@@ -134,31 +148,96 @@ inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_REL
     return obj.fetch_and_add(addend, mo);
 }
 
-
-
-inline void modern_fence() {
-    //  TODO: is this the right memory order to use?
+//  TODO: disable TSan warnings about atomic_thread_fence
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtsan"
+inline void atomic_signal_fence() {
     std::atomic_signal_fence(MO_ACQ_REL);
 }
 
-inline void modern_acquire_fence() {
+inline void atomic_signal_acquire_fence() {
     std::atomic_signal_fence(MO_ACQUIRE);
 }
 
-inline void modern_release_fence() {
+inline void atomic_signal_release_fence() {
     std::atomic_signal_fence(MO_RELEASE);
 }
 
-inline void modern_relax_fence() {
-    //  TODO: is this cheating?
+inline void atomic_signal_relax_fence() {
+    //  TODO: figure out better relax
     std::atomic_signal_fence(MO_ACQ_REL);
 }
 
-struct modern_relax_fence_function {
+struct atomic_signal_relax_fence_function {
     void operator()() const {
-        modern_relax_fence();
+        atomic_signal_relax_fence();
     }
 };
+
+inline void atomic_thread_fence() {
+    std::atomic_thread_fence(MO_ACQ_REL);
+}
+
+inline void atomic_thread_acquire_fence() {
+    std::atomic_thread_fence(MO_ACQUIRE);
+}
+
+inline void atomic_thread_release_fence() {
+    std::atomic_thread_fence(MO_RELEASE);
+}
+
+inline void atomic_thread_relax_fence() {
+    //  TODO: figure out better relax
+    std::atomic_thread_fence(MO_ACQ_REL);
+}
+
+struct atomic_thread_relax_fence_function {
+    void operator()() const {
+        atomic_thread_relax_fence();
+    }
+};
+
+
+#define ATOMIC_THREAD_FOR_FENCE 1
+
+inline void atomic_fence() {
+#if ATOMIC_THREAD_FOR_FENCE
+    atomic_thread_fence();
+#else
+    atomic_signal_fence();
+#endif
+}
+
+inline void atomic_acquire_fence() {
+#if ATOMIC_THREAD_FOR_FENCE
+    atomic_thread_acquire_fence();
+#else
+    atomic_signal_acquire_fence();
+#endif
+}
+
+inline void atomic_release_fence() {
+    #if ATOMIC_THREAD_FOR_FENCE
+    atomic_thread_release_fence();
+#else
+    atomic_signal_release_fence();
+#endif
+}
+
+inline void atomic_relax_fence() {
+#if ATOMIC_THREAD_FOR_FENCE
+    atomic_thread_relax_fence();
+#else
+    atomic_signal_relax_fence();
+#endif
+}
+
+struct atomic_relax_fence_function {
+    void operator()() const {
+        atomic_relax_fence();
+    }
+};
+#pragma GCC diagnostic pop
 
 
 

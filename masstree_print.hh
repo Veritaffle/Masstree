@@ -84,9 +84,9 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
         char buf[1024];
         int l = 0;
         if (ksuf_ && extrasize64_ < -1)
-            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);
+            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_ - 1, (int) ksuf_.load(MO_ACQUIRE)->capacity() / 64);
         else if (ksuf_)
-            l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_->capacity() / 64);
+            l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_.load(MO_ACQUIRE)->capacity() / 64);
         else if (extrasize64_)
             l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_);
         if (P::debug_level > 0) {
@@ -138,6 +138,17 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
 template <typename P>
 void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) const
 {
+    /*
+    //  TODO: ripped from my other version
+    //  copy constructor not added to internode (yet)
+    f = f ? f : stderr;
+    prefix = prefix ? prefix : "";
+    internode<P> copy(*this);
+    for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
+        // memcpy(&copy, this, sizeof(copy));
+        copy = *this;
+    */
+
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
     internode<P> copy(*this);

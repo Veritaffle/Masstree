@@ -271,7 +271,7 @@ class leaf : public node_base<P> {
     typename permuter_type::storage_type permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
     ikey_type ikey0_[width];                                        //  uint64_t per struct nodeparams
     leafvalue_type lv_[width];                                      //  leafvalue<P> which is a struct (!)
-    external_ksuf_type* ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
+    relaxed_atomic<external_ksuf_type*> ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
     union {
         leaf<P>* ptr;
         uintptr_t x;
@@ -292,6 +292,8 @@ class leaf : public node_base<P> {
         if (extrasize64_ > 0) {
             new((void*) &iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
         }
+        //  TODO: deubg
+        fprintf(stderr, "iksuf_: %p\n", iksuf_);
         if (P::need_phantom_epoch) {
             phantom_epoch_[0] = phantom_epoch;
         }
@@ -393,7 +395,7 @@ class leaf : public node_base<P> {
     Str ksuf(int p, int keylenx) const {
         (void) keylenx;
         masstree_precondition(keylenx_has_ksuf(keylenx));
-        return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
+        return ksuf_ ? ksuf_.load(MO_ACQUIRE)->get(p) : iksuf_[0].get(p);
     }
     Str ksuf(int p) const {
         return ksuf(p, keylenx_[p]);
@@ -428,7 +430,7 @@ class leaf : public node_base<P> {
 
     size_t ksuf_used_capacity() const {
         if (ksuf_)
-            return ksuf_->used_capacity();
+            return ksuf_.load(MO_ACQUIRE)->used_capacity();
         else if (extrasize64_ > 0)
             return iksuf_[0].used_capacity();
         else
@@ -436,7 +438,7 @@ class leaf : public node_base<P> {
     }
     size_t ksuf_capacity() const {
         if (ksuf_)
-            return ksuf_->capacity();
+            return ksuf_.load(MO_ACQUIRE)->capacity();
         else if (extrasize64_ > 0)
             return iksuf_[0].capacity();
         else
@@ -447,7 +449,7 @@ class leaf : public node_base<P> {
     }
     Str ksuf_storage(int p) const {
         if (ksuf_)
-            return ksuf_->get(p);
+            return ksuf_.load(MO_ACQUIRE)->get(p);
         else if (extrasize64_ > 0)
             return iksuf_[0].get(p);
         else
@@ -464,8 +466,8 @@ class leaf : public node_base<P> {
         if (extrasize64_ > 0)
             ::prefetch((const char *) &iksuf_[0]);
         else if (extrasize64_ < 0) {
-            ::prefetch((const char *) ksuf_);
-            ::prefetch((const char *) ksuf_ + CACHE_LINE_SIZE);
+            ::prefetch((const char *) ksuf_.load(MO_ACQUIRE));
+            ::prefetch((const char *) ksuf_.load(MO_ACQUIRE) + CACHE_LINE_SIZE);
         }
     }
 
@@ -477,7 +479,7 @@ class leaf : public node_base<P> {
 
     void deallocate(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate(ksuf_, ksuf_->capacity(),
+            ti.deallocate(ksuf_, ksuf_.load(MO_ACQUIRE)->capacity(),
                           memtag_masstree_ksuffixes);
         if (extrasize64_ != 0)
             iksuf_[0].~stringbag();
@@ -485,7 +487,7 @@ class leaf : public node_base<P> {
     }
     void deallocate_rcu(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate_rcu(ksuf_, ksuf_->capacity(),
+            ti.deallocate_rcu(ksuf_, ksuf_.load(MO_ACQUIRE)->capacity(),
                               memtag_masstree_ksuffixes);
         ti.pool_deallocate_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
@@ -735,6 +737,8 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
+    fprintf(stderr, "leaf::assign_ksuf(): %p\n", ksuf_.load());
+    /*
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
         
@@ -747,9 +751,19 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         // }
         return;
     }
-        
+    */
+
+    //  TODO: never assign to iksuf_
+    //  TODO: RCU every time?
+    
+//     if (ksuf_ && ksuf_.load(MO_ACQUIRE)->assign(p, s)) {
+//        return;
+//    }
+
 
     external_ksuf_type* oksuf = ksuf_;
+    //  TODO: print
+    fprintf(stderr, "oksuf: %p\n", oksuf);
 
     permuter_type perm(permutation_);
     int n = initializing ? p : perm.size();
@@ -767,6 +781,8 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
 
     void* ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
     external_ksuf_type* nksuf = new(ptr) external_ksuf_type(width, sz);
+    //  TODO: print
+    fprintf(stderr, "nksuf: %p\n", nksuf);
     for (int i = 0; i < n; ++i) {
         int mp = initializing ? i : perm[i];
         if (mp != p && has_ksuf(mp)) {
@@ -785,8 +801,10 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     // will retry.
     masstree_invariant(modstate_ != modstate_remove);
 
-    ksuf_ = nksuf;
-    fence();
+    
+    ksuf_.store(nksuf, SHUTUP_TSAN_MO_RELEASE);
+    //  TODO
+    atomic_release_fence();
 
     if (extrasize64_ >= 0)      // now the new ksuf_ installed, mark old dead
         extrasize64_ = -extrasize64_ - 1;
