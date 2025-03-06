@@ -178,7 +178,7 @@ template <typename C>
 void kvtest_rw1long_seed(C &client, int seed)
 {
     const char * const formats[] = {
-        "user%u", "machine%u", "opening%u", "%u fartparadere3223iu233278r32gr327fgiu32gf32gf329gfgsjdh"
+        "user%u", "machine%u", "opening%u", "fartparade%u"
     };
     char buf[64];
 
@@ -188,7 +188,6 @@ void kvtest_rw1long_seed(C &client, int seed)
     kvrandom_uniform_int_distribution<unsigned> fmtd(0, 3);
     for (n = 0; !client.timeout(0) && n <= client.limit(); ++n) {
         int32_t x = (int32_t) client.rand();
-        fprintf(stdout, "put: x: %d\n", x);
         client.put(Str::snprintf(buf, sizeof(buf), formats[fmtd(client.rand)], x), x + 1);
     }
     client.wait_all();
@@ -201,7 +200,6 @@ void kvtest_rw1long_seed(C &client, int seed)
     client.rand.seed(seed);
     for (unsigned i = 0; i < n * 2; ++i) {
         a[i] = (int32_t) client.rand();
-        fprintf(stdout, "a[%d] = %d\n", i, a[i]);
     }
     kvrandom_uniform_int_distribution<unsigned> swapd(0, n - 1);
     for (unsigned i = 0; i < n; ++i) {
@@ -213,9 +211,8 @@ void kvtest_rw1long_seed(C &client, int seed)
     double tg0 = client.now();
     unsigned g;
     for (g = 0; g < n && !client.timeout(1); ++g) {
-        unsigned fmt = a[2 * g + 1];
         int32_t x = (int32_t) a[2 * g];
-        fprintf(stdout, "get_check: x: %u fmt: %d\n", x, fmt);
+        unsigned fmt = a[2 * g + 1];
         client.get_check(Str::snprintf(buf, sizeof(buf), formats[fmt % 4], x), x + 1);
     }
     client.wait_all();
