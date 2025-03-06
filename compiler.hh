@@ -74,6 +74,7 @@ inline int ffs_msb(unsigned long long x) {
 
 //  THESIS: new standard stuff
 
+using memory_order = std::memory_order;
 #define MO_RELAXED std::memory_order_relaxed
 #define MO_CONSUME std::memory_order_consume
 #define MO_ACQUIRE std::memory_order_acquire
@@ -92,11 +93,13 @@ public:
     relaxed_atomic(T v) : _v(v) {
     }
 
-    T load() const {
-        return _v.load(MO_RELAXED);
+    //  load() and store() can take an optional memory order.
+    //  Defaults to MO_RELAXED.
+    T load(memory_order mo = MO_RELAXED) const {
+        return _v.load(mo);
     }
-    relaxed_atomic<T>& store(T v) {
-        _v.store(v, MO_RELAXED);
+    relaxed_atomic<T>& store(T v, memory_order mo = MO_RELAXED) {
+        _v.store(v, mo);
         return *this;
     }
 
@@ -109,6 +112,15 @@ public:
         return store(v);
     }
 
+    //  TODO: xchg
+    //  TODO: val_cmpxchg
+    //  TODO: bool_cmpxchg
+    
+    T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
+        return _v.fetch_add(addend, mo);
+    }
+    //  atomic_or omitted, for now
+
     relaxed_atomic(const relaxed_atomic<T>&) = delete;
     relaxed_atomic(relaxed_atomic<T>&&) = delete;
     relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
@@ -116,6 +128,12 @@ public:
 private:
     std::atomic<T> _v;
 };
+
+template <typename T>
+inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_RELAXED) {
+    return obj.fetch_and_add(addend, mo);
+}
+
 
 
 inline void modern_fence() {
