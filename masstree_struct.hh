@@ -196,14 +196,26 @@ class leafvalue {
   public:
     typedef typename P::value_type value_type;
     typedef typename make_prefetcher<P>::type prefetcher_type;
+    /**/
 
+    //  TODO: initialize instead of calling store()
     leafvalue() {
+        v_.store(0);
     }
     leafvalue(value_type v) {
-        u_.v = v;
+        v_.store(reinterpret_cast<uintptr_t>(v));
     }
     leafvalue(node_base<P>* n) {
-        u_.x = reinterpret_cast<uintptr_t>(n);
+        v_.store(reinterpret_cast<uintptr_t>(n));
+    }
+
+    //  copy constructor
+    leafvalue(const leafvalue<P>& other) :
+        v_(other.value()) {}
+    
+    leafvalue<P>& operator=(const leafvalue<P>& other) {
+        v_.store(reinterpret_cast<uintptr_t>(other.value()));
+        return *this;
     }
 
     static leafvalue<P> make_empty() {
@@ -212,36 +224,42 @@ class leafvalue {
 
     typedef bool (leafvalue<P>::*unspecified_bool_type)() const;
     operator unspecified_bool_type() const {
-        return u_.x ? &leafvalue<P>::empty : 0;
+        return v_.load() ? &leafvalue<P>::empty : 0;
     }
     bool empty() const {
-        return !u_.x;
+        return !v_.load();
     }
 
     value_type value() const {
-        return u_.v;
+        return reinterpret_cast<value_type>(v_.load());
     }
-    value_type& value() {
-        return u_.v;
+    relaxed_atomic<value_type>& value() {
+        //  TODO: this might be dangerous
+        // return v_;
+        return reinterpret_cast<relaxed_atomic<value_type>>(v_);
     }
 
     node_base<P>* layer() const {
-        return reinterpret_cast<node_base<P>*>(u_.x);
+        return reinterpret_cast<node_base<P>*>(v_.load());
     }
 
     void prefetch(int keylenx) const {
         if (!leaf<P>::keylenx_is_layer(keylenx))
-            prefetcher_type()(u_.v);
+            prefetcher_type()(reinterpret_cast<value_type>(v_.load()));
         else
-            u_.n->prefetch_full();
+            // u_.n->prefetch_full();
+            reinterpret_cast<node_base<P>*>(v_.load())->prefetch_full();
     }
 
   private:
+    /*
     union {
         node_base<P>* n;
         value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
         uintptr_t x;
     } u_;
+    */
+   relaxed_atomic<uintptr_t> v_;
 };
 
 template <typename P>
@@ -265,10 +283,10 @@ class leaf : public node_base<P> {
         modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
     };
 
-    int8_t extrasize64_;
+    relaxed_atomic<int8_t> extrasize64_;
     uint8_t modstate_;
     uint8_t keylenx_[width];
-    typename permuter_type::storage_type permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
+    relaxed_atomic<typename permuter_type::storage_type> permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
     ikey_type ikey0_[width];                                        //  uint64_t per struct nodeparams
     leafvalue_type lv_[width];                                      //  leafvalue<P> which is a struct (!)
     relaxed_atomic<external_ksuf_type*> ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
@@ -288,7 +306,9 @@ class leaf : public node_base<P> {
           permutation_(permuter_type::make_empty()),
           ksuf_(), parent_(), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
-        extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
+        //  TODO: temporary hack
+        // extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
+        extrasize64_ = 0;
         if (extrasize64_ > 0) {
             new((void*) &iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
         }
@@ -321,7 +341,8 @@ class leaf : public node_base<P> {
         return (sizeof(leaf<P>) + 63) & ~size_t(63);
     }
     size_t allocated_size() const {
-        int es = (extrasize64_ >= 0 ? extrasize64_ : -extrasize64_ - 1);
+        //  TODO: jank
+        int es = (extrasize64_.load() >= 0 ? extrasize64_.load() : -extrasize64_.load() - 1);
         return (sizeof(*this) + es * 64 + 63) & ~size_t(63);
     }
     phantom_epoch_type phantom_epoch() const {
@@ -737,7 +758,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-    fprintf(stderr, "leaf::assign_ksuf(): %p\n", ksuf_.load());
+    fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_.load(), s.len);
     /*
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
@@ -753,7 +774,6 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     }
     */
 
-    //  TODO: never assign to iksuf_
     //  TODO: RCU every time?
     
 //     if (ksuf_ && ksuf_.load(MO_ACQUIRE)->assign(p, s)) {
