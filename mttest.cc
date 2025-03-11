@@ -1045,7 +1045,9 @@ Try 'mttest --help' for options.\n");
         signal(*it, abortable_signal_handler);
 #endif
 
-#if !(ATOMIC_THREAD_FOR_FENCE)
+#if ATOMIC_THREAD_FENCE_FENCES
+    fprintf(stderr, "atomic_thread_fence used\n");
+#else
     fprintf(stderr, "atomic_signal_fence used\n");
 #endif
 

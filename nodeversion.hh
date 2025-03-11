@@ -211,7 +211,7 @@ class nodeversion {
 };
 
 #elif defined(NODEVERSION_IMPL_FULLATOMIC)
-//  implementation with underlying datatype as atomic
+//  implementation with underlying datatype as relaxed_atomic
 template <typename P>
 class nodeversion {
   public:

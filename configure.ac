@@ -407,10 +407,19 @@ elif test -n "$enable_preconditions"; then
     AC_DEFINE_UNQUOTED([ENABLE_INVARIANTS], [1], [Define to enable invariant assertions.])
 fi
 
-AC_ARG_ENABLE([atomic_nv],
-    [AS_HELP_STRING([--enable-atomic_nv], [Enable usage of atomic nodeversion])])
-if test "$enable_atomic_nv" = "yes"; then
-    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use atomic nodeversion implementation.])
+
+AC_ARG_ENABLE([atomic_thread_fence_fences],
+    [AS_HELP_STRING([--disable-atomic_thread_fence_fences], [use atomic_signal_fence() in place of atomic_thread_fence()])])
+if test "$enable_atomic_thread_fence_fences" = no; then
+    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [0], [Set to use atomic_thread_fence() over atomic_signal_fence().])
+else
+    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence() over atomic_signal_fence().].)
+fi
+
+AC_ARG_ENABLE([atomic_nodeversion],
+    [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of full atomic nodeversion])])
+if test "$enable_atomic_nodeversion" = yes; then
+    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use full atomic nodeversion implementation.])
 else
     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
 fi

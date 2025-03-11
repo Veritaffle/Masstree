@@ -208,7 +208,7 @@ struct atomic_thread_relax_fence_function {
 
 
 inline void atomic_fence() {
-#ifdef ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_fence();
 #else
     atomic_signal_fence();
@@ -216,7 +216,7 @@ inline void atomic_fence() {
 }
 
 inline void atomic_acquire_fence() {
-#ifdef ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_acquire_fence();
 #else
     atomic_signal_acquire_fence();
@@ -224,7 +224,7 @@ inline void atomic_acquire_fence() {
 }
 
 inline void atomic_release_fence() {
-#ifdef ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_release_fence();
 #else
     atomic_signal_release_fence();
@@ -232,7 +232,7 @@ inline void atomic_release_fence() {
 }
 
 inline void atomic_relax_fence() {
-#ifdef ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_relax_fence();
 #else
     atomic_signal_relax_fence();
