@@ -191,12 +191,12 @@ class internode : public node_base<P> {
     template <typename PP> friend class tcursor;
 };
 
+/*
 template <typename P>
 class leafvalue {
   public:
     typedef typename P::value_type value_type;
     typedef typename make_prefetcher<P>::type prefetcher_type;
-    /**/
 
     //  TODO: initialize instead of calling store()
     leafvalue() {
@@ -233,10 +233,10 @@ class leafvalue {
     value_type value() const {
         return reinterpret_cast<value_type>(v_.load());
     }
-    relaxed_atomic<value_type>& value() {
+    value_type& value() {
         //  TODO: this might be dangerous
-        // return v_;
-        return reinterpret_cast<relaxed_atomic<value_type>>(v_);
+        return v_;
+        // return reinterpret_cast<relaxed_atomic<value_type>>(v_);
     }
 
     node_base<P>* layer() const {
@@ -252,14 +252,66 @@ class leafvalue {
     }
 
   private:
-    /*
     union {
         node_base<P>* n;
         value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
         uintptr_t x;
     } u_;
-    */
    relaxed_atomic<uintptr_t> v_;
+};
+*/
+
+template <typename P>
+class leafvalue {
+  public:
+    typedef typename P::value_type value_type;
+    typedef typename make_prefetcher<P>::type prefetcher_type;
+
+    leafvalue() {
+    }
+    leafvalue(value_type v) {
+        u_.v = v;
+    }
+    leafvalue(node_base<P>* n) {
+        u_.x = reinterpret_cast<uintptr_t>(n);
+    }
+
+    static leafvalue<P> make_empty() {
+        return leafvalue<P>(value_type());
+    }
+
+    typedef bool (leafvalue<P>::*unspecified_bool_type)() const;
+    operator unspecified_bool_type() const {
+        return u_.x ? &leafvalue<P>::empty : 0;
+    }
+    bool empty() const {
+        return !u_.x;
+    }
+
+    value_type value() const {
+        return u_.v;
+    }
+    value_type& value() {
+        return u_.v;
+    }
+
+    node_base<P>* layer() const {
+        return reinterpret_cast<node_base<P>*>(u_.x);
+    }
+
+    void prefetch(int keylenx) const {
+        if (!leaf<P>::keylenx_is_layer(keylenx))
+            prefetcher_type()(u_.v);
+        else
+            u_.n->prefetch_full();
+    }
+
+private:
+    union {
+        node_base<P>* n;
+        value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
+        uintptr_t x;
+    } u_;
 };
 
 template <typename P>
@@ -283,13 +335,13 @@ class leaf : public node_base<P> {
         modstate_insert = 0, modstate_remove = 1, modstate_deleted_layer = 2
     };
 
-    relaxed_atomic<int8_t> extrasize64_;
+    int8_t extrasize64_;
     uint8_t modstate_;
     uint8_t keylenx_[width];
-    relaxed_atomic<typename permuter_type::storage_type> permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
+    typename permuter_type::storage_type permutation_;              //  uint16_t, uint32_t, or uint64_t per kpermuter.hh
     ikey_type ikey0_[width];                                        //  uint64_t per struct nodeparams
     leafvalue_type lv_[width];                                      //  leafvalue<P> which is a struct (!)
-    relaxed_atomic<external_ksuf_type*> ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
+    external_ksuf_type* ksuf_;                                      //  pointer to stringbag<uint16_t> (!)
     union {
         leaf<P>* ptr;
         uintptr_t x;
@@ -306,14 +358,10 @@ class leaf : public node_base<P> {
           permutation_(permuter_type::make_empty()),
           ksuf_(), parent_(), iksuf_{} {
         masstree_precondition(sz % 64 == 0 && sz / 64 < 128);
-        //  TODO: temporary hack
-        // extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
-        extrasize64_ = 0;
+        extrasize64_ = (int(sz) >> 6) - ((int(sizeof(*this)) + 63) >> 6);
         if (extrasize64_ > 0) {
             new((void*) &iksuf_[0]) internal_ksuf_type(width, sz - sizeof(*this));
         }
-        //  TODO: deubg
-        fprintf(stderr, "iksuf_: %p\n", iksuf_);
         if (P::need_phantom_epoch) {
             phantom_epoch_[0] = phantom_epoch;
         }
@@ -341,8 +389,7 @@ class leaf : public node_base<P> {
         return (sizeof(leaf<P>) + 63) & ~size_t(63);
     }
     size_t allocated_size() const {
-        //  TODO: jank
-        int es = (extrasize64_.load() >= 0 ? extrasize64_.load() : -extrasize64_.load() - 1);
+        int es = (extrasize64_ >= 0 ? extrasize64_ : -extrasize64_ - 1);
         return (sizeof(*this) + es * 64 + 63) & ~size_t(63);
     }
     phantom_epoch_type phantom_epoch() const {
@@ -416,7 +463,7 @@ class leaf : public node_base<P> {
     Str ksuf(int p, int keylenx) const {
         (void) keylenx;
         masstree_precondition(keylenx_has_ksuf(keylenx));
-        return ksuf_ ? ksuf_.load(MO_ACQUIRE)->get(p) : iksuf_[0].get(p);
+        return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
     Str ksuf(int p) const {
         return ksuf(p, keylenx_[p]);
@@ -451,7 +498,7 @@ class leaf : public node_base<P> {
 
     size_t ksuf_used_capacity() const {
         if (ksuf_)
-            return ksuf_.load(MO_ACQUIRE)->used_capacity();
+            return ksuf_->used_capacity();
         else if (extrasize64_ > 0)
             return iksuf_[0].used_capacity();
         else
@@ -459,7 +506,7 @@ class leaf : public node_base<P> {
     }
     size_t ksuf_capacity() const {
         if (ksuf_)
-            return ksuf_.load(MO_ACQUIRE)->capacity();
+            return ksuf_->capacity();
         else if (extrasize64_ > 0)
             return iksuf_[0].capacity();
         else
@@ -470,7 +517,7 @@ class leaf : public node_base<P> {
     }
     Str ksuf_storage(int p) const {
         if (ksuf_)
-            return ksuf_.load(MO_ACQUIRE)->get(p);
+            return ksuf_->get(p);
         else if (extrasize64_ > 0)
             return iksuf_[0].get(p);
         else
@@ -487,8 +534,8 @@ class leaf : public node_base<P> {
         if (extrasize64_ > 0)
             ::prefetch((const char *) &iksuf_[0]);
         else if (extrasize64_ < 0) {
-            ::prefetch((const char *) ksuf_.load(MO_ACQUIRE));
-            ::prefetch((const char *) ksuf_.load(MO_ACQUIRE) + CACHE_LINE_SIZE);
+            ::prefetch((const char *) ksuf_);
+            ::prefetch((const char *) ksuf_ + CACHE_LINE_SIZE);
         }
     }
 
@@ -500,7 +547,7 @@ class leaf : public node_base<P> {
 
     void deallocate(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate(ksuf_, ksuf_.load(MO_ACQUIRE)->capacity(),
+            ti.deallocate(ksuf_, ksuf_->capacity(),
                           memtag_masstree_ksuffixes);
         if (extrasize64_ != 0)
             iksuf_[0].~stringbag();
@@ -508,7 +555,7 @@ class leaf : public node_base<P> {
     }
     void deallocate_rcu(threadinfo& ti) {
         if (ksuf_)
-            ti.deallocate_rcu(ksuf_, ksuf_.load(MO_ACQUIRE)->capacity(),
+            ti.deallocate_rcu(ksuf_, ksuf_->capacity(),
                               memtag_masstree_ksuffixes);
         ti.pool_deallocate_rcu(this, allocated_size(), memtag_masstree_leaf);
     }
@@ -560,6 +607,8 @@ class leaf : public node_base<P> {
 
     template <typename PP> friend class tcursor;
 };
+
+
 
 
 template <typename P>
