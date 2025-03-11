@@ -1606,7 +1606,8 @@ void kvtest_scan1(C &client, double writer_quiet)
             int rand = client.rand() % 65536;
             if (rand < wq65536) {
                 for (int d = 0; d < 31; ++d) {
-                    relax_fence();
+                    //  TODO: untested
+                    nonatomic_relax_fence();
                 }
             } else if (rounds > 100 && (rand % 2) == 1) {
                 for (int d = 0; d < 31; ++d) {

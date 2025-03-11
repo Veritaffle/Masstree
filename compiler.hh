@@ -23,6 +23,7 @@
 #include <type_traits>
 #endif
 #include <atomic>
+#include <thread>
 
 #define arraysize(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -142,6 +143,10 @@ public:
         return _v.fetch_or(arg, mo);
     }
 
+    bool is_lock_free() const {
+        return _v.is_lock_free();
+    }
+
     relaxed_atomic(const relaxed_atomic<T>&) = delete;
     relaxed_atomic(relaxed_atomic<T>&&) = delete;
     relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
@@ -246,8 +251,9 @@ struct atomic_relax_fence_function {
 };
 #pragma GCC diagnostic pop
 
-
-
+inline void nonatomic_relax_fence() {
+    std::this_thread::yield();
+}
 
 
 
