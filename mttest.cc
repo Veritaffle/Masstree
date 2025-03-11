@@ -1045,9 +1045,13 @@ Try 'mttest --help' for options.\n");
         signal(*it, abortable_signal_handler);
 #endif
 
-#if defined(NODEVERSION_IMPL_HANDROLLED)
+#if !(ATOMIC_THREAD_FOR_FENCE)
+    fprintf(stderr, "atomic_signal_fence used\n");
+#endif
+
+#if NODEVERSION_IMPL_HANDROLLED
     fprintf(stderr, "nodeversion: handrolled\n");
-#elif defined(NODEVERSION_IMPL_FULLATOMIC)
+#elif NODEVERSION_IMPL_FULLATOMIC
     fprintf(stderr, "nodeversion: fullatomic\n");
 #endif
 

@@ -128,12 +128,19 @@ public:
 
     //  TODO: xchg
     //  TODO: val_cmpxchg
-    //  TODO: bool_cmpxchg
+
+    bool compare_exchange_weak(T& expected, T desired,
+                               std::memory_order success = MO_RELAXED,
+                               std::memory_order failure = MO_RELAXED) {
+        return _v.compare_exchange_weak(expected, desired, success, failure);
+    }
     
     T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
         return _v.fetch_add(addend, mo);
     }
-    //  atomic_or omitted, for now
+    T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
+        return _v.fetch_or(arg, mo);
+    }
 
     relaxed_atomic(const relaxed_atomic<T>&) = delete;
     relaxed_atomic(relaxed_atomic<T>&&) = delete;
@@ -198,10 +205,10 @@ struct atomic_thread_relax_fence_function {
 };
 
 
-#define ATOMIC_THREAD_FOR_FENCE 1
+
 
 inline void atomic_fence() {
-#if ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FOR_FENCE
     atomic_thread_fence();
 #else
     atomic_signal_fence();
@@ -209,7 +216,7 @@ inline void atomic_fence() {
 }
 
 inline void atomic_acquire_fence() {
-#if ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FOR_FENCE
     atomic_thread_acquire_fence();
 #else
     atomic_signal_acquire_fence();
@@ -217,7 +224,7 @@ inline void atomic_acquire_fence() {
 }
 
 inline void atomic_release_fence() {
-    #if ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FOR_FENCE
     atomic_thread_release_fence();
 #else
     atomic_signal_release_fence();
@@ -225,7 +232,7 @@ inline void atomic_release_fence() {
 }
 
 inline void atomic_relax_fence() {
-#if ATOMIC_THREAD_FOR_FENCE
+#ifdef ATOMIC_THREAD_FOR_FENCE
     atomic_thread_relax_fence();
 #else
     atomic_signal_relax_fence();
