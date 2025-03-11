@@ -177,6 +177,7 @@ inline void atomic_signal_release_fence() {
 
 inline void atomic_signal_relax_fence() {
     //  TODO: figure out better relax
+    std::this_thread::yield();
     std::atomic_signal_fence(MO_ACQ_REL);
 }
 
@@ -200,6 +201,7 @@ inline void atomic_thread_release_fence() {
 
 inline void atomic_thread_relax_fence() {
     //  TODO: figure out better relax
+    std::this_thread::yield();
     std::atomic_thread_fence(MO_ACQ_REL);
 }
 
