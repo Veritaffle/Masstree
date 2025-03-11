@@ -203,10 +203,10 @@ class leafvalue {
         v_.store(0);
     }
     leafvalue(value_type v) {
-        v_.store(v);
+        v_.store(reinterpret_cast<uintptr_t>(v));
     }
     leafvalue(node_base<P>* n) {
-        v_.store(reinterpret_cast<value_type>(n));
+        v_.store(reinterpret_cast<uintptr_t>(n));
     }
 
     //  copy constructor
@@ -214,7 +214,7 @@ class leafvalue {
         v_(other.value()) {}
     
     leafvalue<P>& operator=(const leafvalue<P>& other) {
-        v_.store(other.value());
+        v_.store(reinterpret_cast<uintptr_t>(other.value()));
         return *this;
     }
 
@@ -231,12 +231,12 @@ class leafvalue {
     }
 
     value_type value() const {
-        return v_.load();
+        return reinterpret_cast<value_type>(v_.load());
     }
     relaxed_atomic<value_type>& value() {
         //  TODO: this might be dangerous
         // return v_;
-        return v_;
+        return reinterpret_cast<relaxed_atomic<value_type>>(v_);
     }
 
     node_base<P>* layer() const {
@@ -245,7 +245,7 @@ class leafvalue {
 
     void prefetch(int keylenx) const {
         if (!leaf<P>::keylenx_is_layer(keylenx))
-            prefetcher_type()(v_.load());
+            prefetcher_type()(reinterpret_cast<value_type>(v_.load()));
         else
             // u_.n->prefetch_full();
             reinterpret_cast<node_base<P>*>(v_.load())->prefetch_full();
@@ -259,8 +259,7 @@ class leafvalue {
         uintptr_t x;
     } u_;
     */
-   //   TODO: this assumes that value_type is a pointer type. Enforce this with std::is_pointer<T>::value
-   relaxed_atomic<value_type> v_;
+   relaxed_atomic<uintptr_t> v_;
 };
 
 template <typename P>
