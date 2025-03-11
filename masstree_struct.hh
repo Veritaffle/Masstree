@@ -807,8 +807,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-    fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_.load(), s.len);
-    /*
+    fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
         
@@ -821,7 +820,6 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
         // }
         return;
     }
-    */
 
     //  TODO: RCU every time?
     
@@ -870,10 +868,12 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     // will retry.
     masstree_invariant(modstate_ != modstate_remove);
 
-    
-    ksuf_.store(nksuf, SHUTUP_TSAN_MO_RELEASE);
+    ksuf_ = nksuf;
+    fence();
+
+    // ksuf_.store(nksuf, SHUTUP_TSAN_MO_RELEASE);
     //  TODO
-    atomic_release_fence();
+    // atomic_release_fence();
 
     if (extrasize64_ >= 0)      // now the new ksuf_ installed, mark old dead
         extrasize64_ = -extrasize64_ - 1;

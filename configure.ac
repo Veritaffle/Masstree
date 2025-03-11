@@ -407,6 +407,14 @@ elif test -n "$enable_preconditions"; then
     AC_DEFINE_UNQUOTED([ENABLE_INVARIANTS], [1], [Define to enable invariant assertions.])
 fi
 
+AC_ARG_ENABLE([atomic_nv],
+    [AS_HELP_STRING([--enable-atomic_nv], [Enable usage of atomic nodeversion])])
+if test "$enable_atomic_nv" = "yes"; then
+    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use atomic nodeversion implementation.])
+else
+    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
+fi
+
 AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
 
 AH_TOP([#ifndef MASSTREE_CONFIG_H_INCLUDED

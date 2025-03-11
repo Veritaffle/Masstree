@@ -17,13 +17,13 @@
 #define MASSTREE_NODEVERSION_HH
 #include "compiler.hh"
 
-#define NODEVERSION_IMPL_HANDROLLED 1
-#define NODEVERSION_IMPL_FULLATOMIC 2
-#define NODEVERSION_IMPL_ATOMICFLAG 3
+// #define NODEVERSION_IMPL_HANDROLLED 1
+// #define NODEVERSION_IMPL_FULLATOMIC 2
+// #define NODEVERSION_IMPL_ATOMICFLAG 3
 
-#define NODEVERSION_IMPL NODEVERSION_IMPL_HANDROLLED
+// #define NODEVERSION_IMPL NODEVERSION_IMPL_HANDROLLED
 
-#if NODEVERSION_IMPL == NODEVERSION_IMPL_HANDROLLED
+#if defined(NODEVERSION_IMPL_HANDROLLED)
 //  original implementation
 template <typename P>
 class nodeversion {
@@ -210,7 +210,7 @@ class nodeversion {
     }
 };
 
-#elif NODEVERSION_IMPL == NODEVERSION_IMPL_FULLATOMIC
+#elif defined(NODEVERSION_IMPL_FULLATOMIC)
 //  implementation with underlying datatype as atomic
 template <typename P>
 class nodeversion {
@@ -439,7 +439,7 @@ class nodeversion {
         : v_(v) {
     }
 };
-#elif NODEVERSION_IMPL == NODEVERSION_IMPL_ATOMICFLAG
+#elif defined(NODEVERSION_IMPL_ATOMICFLAG)
 //  lock bit separated as atomic flag
 //  TODO: can I even do this?
 #endif

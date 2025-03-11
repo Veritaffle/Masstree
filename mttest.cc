@@ -1045,6 +1045,12 @@ Try 'mttest --help' for options.\n");
         signal(*it, abortable_signal_handler);
 #endif
 
+#if defined(NODEVERSION_IMPL_HANDROLLED)
+    fprintf(stderr, "nodeversion: handrolled\n");
+#elif defined(NODEVERSION_IMPL_FULLATOMIC)
+    fprintf(stderr, "nodeversion: fullatomic\n");
+#endif
+
     if (treetypes.empty())
         treetypes.push_back("m");
     if (tests.empty())
