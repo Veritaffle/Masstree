@@ -63,6 +63,7 @@ class unlocked_tcursor {
     bool find_unlocked(threadinfo& ti);
 
     inline value_type value() const {
+        //  TODO: does this call the right value()?
         return lv_.value();
     }
     inline leaf<P>* node() const {
@@ -124,7 +125,7 @@ class tcursor {
     inline bool has_value() const {
         return kx_.p >= 0;
     }
-    inline value_type& value() const {
+    inline relaxed_atomic<value_type>& value() const {
         return n_->lv_[kx_.p].value();
     }
 
@@ -167,7 +168,7 @@ class tcursor {
     node_base<P>* root_;
     int state_;
     //  kx_ is unique to tcursor.
-    //  v_, perm_, lv_ are unique to unlocked_tcusor.
+    //  v_, perm_, lv_ are unique to unlocked_tcursor.
     //  Since tcursor will have locked its node, the node can't be changed, so it can safely be read from.
     //  unlocked_tcursor needs to store its own copies to use.
 

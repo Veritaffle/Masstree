@@ -221,6 +221,13 @@ inline bool row_is_delta_marker(const R* row) {
         return false;
 }
 
+
+template <typename R>
+inline bool row_is_delta_marker(const relaxed_atomic<R*>& row) {
+    return row_is_delta_marker(row.load());
+}
+
+
 template <typename R>
 inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = false) {
     (void) force;
@@ -228,5 +235,12 @@ inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = fals
     return reinterpret_cast<row_delta_marker<R>*>
         (const_cast<char*>(row->col(0).s));
 }
+
+
+template <typename R>
+inline row_delta_marker<R>* row_get_delta_marker(const relaxed_atomic<R*>& row, bool force = false) {
+    return row_get_delta_marker(row.load(), force);
+}
+
 
 #endif

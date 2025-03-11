@@ -74,7 +74,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
     do {
         v = *this;
         fence();
-        perm = permutation_;
+        perm = permutation_.load();
     } while (this->has_changed(v));
     int indent = 2 * depth;
     if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
@@ -84,11 +84,11 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
         char buf[1024];
         int l = 0;
         if (ksuf_ && extrasize64_ < -1)
-            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_ - 1, (int) ksuf_.load(MO_ACQUIRE)->capacity() / 64);
+            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_.load() - 1, (int) ksuf_.load(MO_ACQUIRE)->capacity() / 64);
         else if (ksuf_)
             l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_.load(MO_ACQUIRE)->capacity() / 64);
         else if (extrasize64_)
-            l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_);
+            l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_.load());
         if (P::debug_level > 0) {
             kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
             l += snprintf(&buf[l], sizeof(buf) - l, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));

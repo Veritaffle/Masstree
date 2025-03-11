@@ -84,11 +84,11 @@ class query {
     void emit_fields1(const R* value, Json& req, threadinfo& ti);
     void assign_timestamp(threadinfo& ti);
     void assign_timestamp(threadinfo& ti, kvtimestamp_t t);
-    inline bool apply_put(R*& value, bool found, const Json* firstreq,
+    inline bool apply_put(relaxed_atomic<R*>& value, bool found, const Json* firstreq,
                           const Json* lastreq, threadinfo& ti);
-    inline bool apply_replace(R*& value, bool found, Str new_value,
+    inline bool apply_replace(relaxed_atomic<R*>& value, bool found, Str new_value,
                               threadinfo& ti);
-    inline void apply_remove(R*& value, kvtimestamp_t& node_ts, threadinfo& ti);
+    inline void apply_remove(relaxed_atomic<R*>& value, kvtimestamp_t& node_ts, threadinfo& ti);
 
     template <typename RR> friend class query_json_scanner;
 };
@@ -177,7 +177,7 @@ result_t query<R>::run_put(T& table, Str key,
 }
 
 template <typename R>
-inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
+inline bool query<R>::apply_put(relaxed_atomic<R*>& value, bool found, const Json* firstreq,
                                 const Json* lastreq, threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
         log->acquire();
@@ -198,9 +198,11 @@ inline bool query<R>::apply_put(R*& value, bool found, const Json* firstreq,
         goto insert;
     }
 
+    //  TODO: does this maybe cause problems? Or are we still locked here?
+    //  Nvm update always allocates a new row, except for value_versioned_array...
     R* updated = old_value->update(firstreq, lastreq, qtimes_.ts, ti);
     if (updated != old_value) {
-        value = updated;
+        value.store(updated);
         old_value->deallocate_rcu_after_update(firstreq, lastreq, ti);
     }
     return false;
@@ -219,22 +221,22 @@ result_t query<R>::run_replace(T& table, Str key, Str value, threadinfo& ti) {
 }
 
 template <typename R>
-inline bool query<R>::apply_replace(R*& value, bool found, Str new_value,
+inline bool query<R>::apply_replace(relaxed_atomic<R*>& value, bool found, Str new_value,
                                     threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
         log->acquire();
         qtimes_.epoch = global_log_epoch;
     }
 
-    bool inserted = !found || row_is_marker(value);
+    bool inserted = !found || row_is_marker(value.load());
     if (!found) {
         assign_timestamp(ti);
     } else {
-        assign_timestamp(ti, value->timestamp());
-        value->deallocate_rcu(ti);
+        assign_timestamp(ti, value.load()->timestamp());
+        value.load()->deallocate_rcu(ti);
     }
 
-    value = R::create1(new_value, qtimes_.ts, ti);
+    value.store(R::create1(new_value, qtimes_.ts, ti));
     //  TODO: I'm pretty sure this is only valid because it's an aligned write
     //  (to a pointer type), see Section 4.6.1.
     //  Also compare to similar line in apply_put().
@@ -252,14 +254,14 @@ bool query<R>::run_remove(T& table, Str key, threadinfo& ti) {
 }
 
 template <typename R>
-inline void query<R>::apply_remove(R*& value, kvtimestamp_t& node_ts,
+inline void query<R>::apply_remove(relaxed_atomic<R*>& value, kvtimestamp_t& node_ts,
                                    threadinfo& ti) {
     if (loginfo* log = ti.logger()) {
         log->acquire();
         qtimes_.epoch = global_log_epoch;
     }
 
-    R* old_value = value;
+    R* old_value = value.load();
     assign_timestamp(ti, old_value->timestamp());
     if (circular_int<kvtimestamp_t>::less_equal(node_ts, qtimes_.ts)) {
         node_ts = qtimes_.ts + 2;

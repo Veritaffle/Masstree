@@ -450,7 +450,7 @@ struct logrecord {
     void run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 
   private:
-    inline void apply(row_type*& value, bool found,
+    inline void apply(relaxed_atomic<row_type*>& value, bool found,
                       std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 };
 
@@ -531,9 +531,11 @@ static lcdf::Json* parse_changeset(Str changeset,
     return jrepo.data() + pos;
 }
 
-inline void logrecord::apply(row_type*& value, bool found,
+inline void logrecord::apply(relaxed_atomic<row_type*>& value, bool found,
                              std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
-    row_type** cur_value = &value;
+    //  TODO
+    // row_type** cur_value = &value;
+    relaxed_atomic<row_type*>* cur_value = &value;
     if (!found)
         *cur_value = 0;
 
