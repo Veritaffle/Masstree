@@ -1,40 +1,51 @@
-# VARIANTS=("pthread" "nv")
-# CONFIGS=("debug" "release")
 VARIANTS=("pthread")
-CONFIGS=("debug")
-CXXFLAGS_BASE="-g -W -Wall "
+# TODO
+CONFIGS=("debug" "release")
+# CONFIGS=("debug")
+CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
 #	TODO: produce asm
-CXXFLAGS_DEBUG="-O0 "
+CXXFLAGS_DEBUG="-O0 -fsanitize=thread "
 CXXFLAGS_RELEASE="-O3 "
+#	TODO: these shouldn't be CXXFLAGS
 CXXFLAGS_PTHREAD=""
 CXXFLAGS_NV="--enable-atomic_nv"
+LDFLAGS_BASE=""
 
 cd "build/"
 
 for variant in "${VARIANTS[@]}"; do
 	for config in "${CONFIGS[@]}"; do
 		BUILD_DIR="${variant}-${config}"
-		INSTALL_DIR="$PWD/${BUILD_DIR}/install"
 
 		CXXFLAGS="$CXXFLAGS_BASE"
+		LDFLAGS="$LDFLAGS_BASE"
 		case "$config" in
-			"debug") CXXFLAGS+=$CXXFLAGS_DEBUG ;;
-			"release") CXXFLAGS+=$CXXFLAGS_RELEASE ;;
+			"debug")
+				CXXFLAGS+=$CXXFLAGS_DEBUG
+				LDFLAGS+="-fsanitize=thread"
+				;;
+			"release")
+				CXXFLAGS+=$CXXFLAGS_RELEASE
+				;;
 		esac
 
 		case "$variant" in
-			"pthread") CXXFLAGS+=$CFLAGS_PTHREAD ;;
-			"NV") CXXFLAGS+=$CFLAGS_NV ;;
+			"pthread")
+				CXXFLAGS+=$CXXFLAGS_PTHREAD
+				;;
+			"NV")
+				CXXFLAGS+=$CXXFLAGS_NV
+				;;
 		esac
 
 		# echo "$CXXFLAGS"
 
 		echo "Building $variant-$config configuration..."
+		echo "CXXFLAGS = $CXXFLAGS"
+		echo "LDFLAGS = $LDFLAGS"
 		mkdir -p "$BUILD_DIR"
 		cd "$BUILD_DIR"
-		../../configure CXXFLAGS="$CXXFLAGS" --prefix="$INSTALL_DIR"
-		# make -j$(nproc)
-		# make install
+		../../configure CXXFLAGS="$CXXFLAGS"
 		cd ..
 	done
 done

@@ -2,10 +2,15 @@ AR = ar
 CC = @CC@
 CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
-CXXFLAGS = @CXXFLAGS@ -pthread -fsanitize=thread -std=c++20
+CXXFLAGS = @CXXFLAGS@
 RANLIB = @RANLIB@
 DEPSDIR := .deps
+ASMDIR := .asm
 DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
+
+SRCDIR = ../..
+VPATH = $(SRCDIR)
+
 ifeq ($(strip $(MEMMGR)), )
   MEMMGR = @MALLOC_LIBS@
 endif
@@ -21,22 +26,22 @@ endif
 LIBS = @LIBS@ -lm
 LDFLAGS = @LDFLAGS@ -fsanitize=thread
 
-BUILD_DIR = build
-SFILES := $(patsubst %.o,$(BUILD_DIR)/%.S,$(wildcard *.o))
+# BUILD_DIR = build
+# SFILES := $(patsubst %.o,$(BUILD_DIR)/%.S,$(wildcard *.o))
 
 all: test_atomics mtd mtclient mttest foo
 
 foo: foo.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o: %.c config.h $(DEPSDIR)/stamp
+%.o: %.c config.h $(DEPSDIR)/stamp $(ASMDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
-%.o: %.cc config.h $(DEPSDIR)/stamp
+%.o: %.cc config.h $(DEPSDIR)/stamp $(ASMDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
-$(BUILD_DIR)/%.S: %.o | $(BUILD_DIR)
-	objdump -S $< > $@
+# $(BUILD_DIR)/%.S: %.o | $(BUILD_DIR)
+#	objdump -S $< > $@
 
 libjson.a: json.o string.o straccum.o str.o msgpack.o \
 	clp.o kvrandom.o compiler.o memdebug.o kvthread.o
@@ -85,14 +90,18 @@ GNUmakefile: GNUmakefile.in config.status
 	CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 configure config.h.in: configure.ac
-	autoreconf -i
-	touch config.h.in
+	cd $(SRCDIR) && autoreconf -i
+	touch $(SRCDIR)/config.h.in
 
 config.status: configure
 	./configure @ac_configure_args@
 
 $(DEPSDIR)/stamp:
 	mkdir -p $(DEPSDIR)
+	touch $@
+
+$(ASMDIR)/stamp:
+	mkdir -p $(ASMDIR)
 	touch $@
 
 stamp-h: config.h.in config.status

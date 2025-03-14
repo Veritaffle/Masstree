@@ -8,8 +8,9 @@ AC_SUBST(ac_configure_args)
 
 ac_user_cxx=${CXX+y}
 #   TODO: nerfed to -O0 for debugging
+#   TODO: changed to -O1 since this shouldn't be used by new config setup
 # if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O3"; fi
-if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O0"; fi
+if test "${CXXFLAGS+y}" != y; then CXXFLAGS="-g -W -Wall -O1"; fi
 
 AC_PROG_CC
 AC_PROG_CXX
