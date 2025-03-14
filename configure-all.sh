@@ -1,7 +1,5 @@
 VARIANTS=("pthread")
-# TODO
 CONFIGS=("debug" "release")
-# CONFIGS=("debug")
 CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
 #	TODO: produce asm
 CXXFLAGS_DEBUG="-O0 -fsanitize=thread "
@@ -38,14 +36,10 @@ for variant in "${VARIANTS[@]}"; do
 				;;
 		esac
 
-		# echo "$CXXFLAGS"
-
 		echo "Building $variant-$config configuration..."
-		echo "CXXFLAGS = $CXXFLAGS"
-		echo "LDFLAGS = $LDFLAGS"
 		mkdir -p "$BUILD_DIR"
 		cd "$BUILD_DIR"
-		../../configure CXXFLAGS="$CXXFLAGS"
+		../../configure CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS"
 		cd ..
 	done
 done
