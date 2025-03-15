@@ -30,10 +30,10 @@ CONFIG = @CONFIG@
 ASMFILES =
 ifeq ($(CONFIG),release)
 	SRCS := $(wildcard $(SRCDIR)/*.cc) $(wildcard $(SRCDIR)/*.c)
-	SRC_EXCLUDE := $(SRCDIR)/test_string.cc
-				   $(SRCDIR)/mttest.cc
-				   $(SRCDIR)/mtd.cc
-				   $(SRCDIR)/mtclient.cc
+	SRC_EXCLUDE := $(SRCDIR)/test_string.cc \
+				   $(SRCDIR)/mttest.cc \
+				   $(SRCDIR)/mtd.cc \
+				   $(SRCDIR)/mtclient.cc \
 				   $(SRCDIR)/json_test.cc
 	SRCS := $(filter-out $(SRC_EXCLUDE), $(SRCS))
 	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
