@@ -15,8 +15,8 @@ CONFIGFLAGS_PTHREAD=""
 CONFIGFLAGS_ATOMICNV_SIGNAL="--enable-atomic_nodeversion --enable-atomic_signal_fence_fences "
 CONFIGFLAGS_ATOMICNV_THREAD="--enable-atomic_nodeversion --enable-atomic_thread_fence_fences "
 
-CONFIGFLAGS_DEBUG=""
-CONFIGFLAGS_RELEASE="--disable-assertions --disable-preconditions --disable-invariants "
+CONFIGFLAGS_DEBUG="--with-build_config=debug"
+CONFIGFLAGS_RELEASE="--with-build_config=release --disable-assertions --disable-preconditions --disable-invariants "
 
 mkdir -p "build"
 cd "build/"

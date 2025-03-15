@@ -26,18 +26,31 @@ endif
 LIBS = @LIBS@ -lm
 LDFLAGS = @LDFLAGS@
 
-# BUILD_DIR = build
-# SFILES := $(patsubst %.o,$(BUILD_DIR)/%.S,$(wildcard *.o))
+CONFIG = @CONFIG@
+ASMFILES =
+ifeq ($(CONFIG),release)
+	SRCS := $(wildcard $(SRCDIR)/*.cc) $(wildcard $(SRCDIR)/*.c)
+	SRC_EXCLUDE := $(SRCDIR)/test_string.cc
+				   $(SRCDIR)/mttest.cc
+				   $(SRCDIR)/mtd.cc
+				   $(SRCDIR)/mtclient.cc
+				   $(SRCDIR)/json_test.cc
+	SRCS := $(filter-out $(SRC_EXCLUDE), $(SRCS))
+	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
+endif
 
-all: test_atomics mtd mtclient mttest foo
+$(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -S -fverbose-asm -o $@ $<
+
+all: test_atomics mtd mtclient mttest $(ASMFILES)
 
 foo: foo.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o: %.c config.h $(DEPSDIR)/stamp $(ASMDIR)/stamp
+%.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
-%.o: %.cc config.h $(DEPSDIR)/stamp $(ASMDIR)/stamp
+%.o: %.cc config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
 # $(BUILD_DIR)/%.S: %.o | $(BUILD_DIR)
@@ -111,6 +124,7 @@ stamp-h: config.h.in config.status
 clean:
 	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
 	rm -rf .deps
+	rm -rf $(OBJDIR)/*.s
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)
 ifneq ($(DEPFILES),)

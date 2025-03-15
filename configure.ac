@@ -410,6 +410,13 @@ fi
 
 
 
+AC_ARG_WITH([build_config],
+    AS_HELP_STRING([--with-build_config=VALUE], [Set build configuration (e.g., release, debug)]),
+    [CONFIG=$withval],
+    [CONFIG=release]
+)
+AC_SUBST(CONFIG)
+
 AC_ARG_ENABLE([atomic_thread_fence_fences],
     [AS_HELP_STRING([--enable-atomic_thread_fence_fences], [use atomic_thread_fence fences])])
 AC_ARG_ENABLE([atomic_signal_fence_fences],
