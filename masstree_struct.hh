@@ -737,14 +737,14 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-    fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
+    debug_fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
         
         //  TODO: remove
         // if (!ksuf_) {
         //     FILE* my_log_file = fopen("mylogfile.txt", "a");
-        //     fprintf(my_log_file, "%p %d %d\n", iksuf_, p, initializing);
+        //     debug_fprintf(my_log_file, "%p %d %d\n", iksuf_, p, initializing);
         //     fflush(my_log_file);
         //     fclose(my_log_file);
         // }
@@ -760,7 +760,7 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
 
     external_ksuf_type* oksuf = ksuf_;
     //  TODO: print
-    fprintf(stderr, "oksuf: %p\n", oksuf);
+    debug_fprintf(stderr, "oksuf: %p\n", oksuf);
 
     permuter_type perm(permutation_);
     int n = initializing ? p : perm.size();
@@ -779,7 +779,7 @@ void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
     void* ptr = ti.allocate(sz, memtag_masstree_ksuffixes);
     external_ksuf_type* nksuf = new(ptr) external_ksuf_type(width, sz);
     //  TODO: print
-    fprintf(stderr, "nksuf: %p\n", nksuf);
+    debug_fprintf(stderr, "nksuf: %p\n", nksuf);
     for (int i = 0; i < n; ++i) {
         int mp = initializing ? i : perm[i];
         if (mp != p && has_ksuf(mp)) {

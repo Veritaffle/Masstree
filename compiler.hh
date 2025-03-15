@@ -160,6 +160,15 @@ inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_REL
     return obj.fetch_and_add(addend, mo);
 }
 
+
+
+
+
+
+
+
+
+
 #if ATOMIC_THREAD_FENCE_FENCES || ATOMIC_SIGNAL_FENCE_FENCES
 //  TODO: disable TSan warnings about atomic_thread_fence
 #pragma GCC diagnostic push
@@ -260,6 +269,15 @@ inline void nonatomic_relax_fence() {
 
 #endif
 
+
+
+#if !NDEBUG
+#define debug_fprintf fprintf
+#else
+inline int debug_fprintf(FILE*, const char*, ...) {
+    return 0;
+}
+#endif
 
 
 //  end THESIS
