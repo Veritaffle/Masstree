@@ -5,7 +5,6 @@
 
 #include <pthread.h>
 
-#include "config.h"
 #include "compiler.hh"
 
 #include "masstree.hh"

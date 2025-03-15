@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include "straccum.hh"
 
+using namespace lcdf;
+
 template <typename T>
 static bool
 check_straccum_utf8(StringAccum &sa, const char *in, int inlen,

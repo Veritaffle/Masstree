@@ -16,6 +16,8 @@
 #ifndef KVSTATS_HH
 #define KVSTATS_HH 1
 #include <stdlib.h>
+#include <cstdio>
+#include <cmath>
 
 struct kvstats {
   double min, max, sum, sumsq;
