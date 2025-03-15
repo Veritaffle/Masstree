@@ -1047,14 +1047,21 @@ Try 'mttest --help' for options.\n");
 
 #if ATOMIC_THREAD_FENCE_FENCES
     fprintf(stderr, "atomic_thread_fence used\n");
-#else
+#elif ATOMIC_SIGNAL_FENCE_FENCES
     fprintf(stderr, "atomic_signal_fence used\n");
+#else
+    fprintf(stderr, "no atomic fence used\n");
 #endif
+
 
 #if NODEVERSION_IMPL_HANDROLLED
     fprintf(stderr, "nodeversion: handrolled\n");
 #elif NODEVERSION_IMPL_FULLATOMIC
-    fprintf(stderr, "nodeversion: fullatomic\n");
+    fprintf(stderr, "nodeversion: atomic\n");
+#elif NODEVERSION_IMPL_ATOMICFLAG
+    fprintf(stderr, "nodeversion: atomic flag\n");
+#else
+    assert(0);
 #endif
 
     if (treetypes.empty())

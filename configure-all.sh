@@ -1,14 +1,24 @@
-VARIANTS=("pthread")
+VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread")
 CONFIGS=("debug" "release")
-CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
+
 #	TODO: produce asm
+CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
 CXXFLAGS_DEBUG="-O0 -fsanitize=thread "
 CXXFLAGS_RELEASE="-O3 "
-#	TODO: these shouldn't be CXXFLAGS
-CXXFLAGS_PTHREAD=""
-CXXFLAGS_NV="--enable-atomic_nv"
-LDFLAGS_BASE=""
 
+LDFLAGS_BASE=""
+LDFLAGS_DEBUG="-fsanitize=thread "
+LDFLAGS_RELEASE=""
+
+CONFIGFLAGS_BASE=""
+CONFIGFLAGS_PTHREAD=""
+CONFIGFLAGS_ATOMICNV_SIGNAL="--enable-atomic_nodeversion --enable-atomic_signal_fence_fences "
+CONFIGFLAGS_ATOMICNV_THREAD="--enable-atomic_nodeversion --enable-atomic_thread_fence_fences "
+
+CONFIGFLAGS_DEBUG=""
+CONFIGFLAGS_RELEASE="--disable-assertions --disable-preconditions --disable-invariants "
+
+mkdir -p "build"
 cd "build/"
 
 for variant in "${VARIANTS[@]}"; do
@@ -17,29 +27,40 @@ for variant in "${VARIANTS[@]}"; do
 
 		CXXFLAGS="$CXXFLAGS_BASE"
 		LDFLAGS="$LDFLAGS_BASE"
+		CONFIGFLAGS="$CONFIGFLAGS_BASE"
+
 		case "$config" in
 			"debug")
 				CXXFLAGS+=$CXXFLAGS_DEBUG
-				LDFLAGS+="-fsanitize=thread"
+				LDFLAGS+=$LDFLAGS_DEBUG
+				CONFIGFLAGS+=$CONFIGFLAGS_DEBUG
 				;;
 			"release")
 				CXXFLAGS+=$CXXFLAGS_RELEASE
+				LDFLAGS+=$LDFLAGS_RELEASE
+				CONFIGFLAGS+=$CONFIGFLAGS_RELEASE
 				;;
 		esac
 
 		case "$variant" in
 			"pthread")
-				CXXFLAGS+=$CXXFLAGS_PTHREAD
+				CONFIGFLAGS+=$CONFIGFLAGS_PTHREAD
 				;;
-			"NV")
-				CXXFLAGS+=$CXXFLAGS_NV
+			"atomicnv_signal")
+				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV_SIGNAL
+				;;
+			"atomicnv_thread")
+				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV_THREAD
 				;;
 		esac
 
-		echo "Building $variant-$config configuration..."
+		echo "Building $variant-$config configuration."
+		echo "CXXFLAGS: $CXXFLAGS"
+		echo "LDFLAGS: $LDFLAGS"
+		echo "CONFIGFLAGS: $CONFIGFLAGS"
 		mkdir -p "$BUILD_DIR"
 		cd "$BUILD_DIR"
-		../../configure CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS"
+		../../configure CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS" $CONFIGFLAGS
 		cd ..
 	done
 done

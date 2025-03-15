@@ -409,38 +409,56 @@ elif test -n "$enable_preconditions"; then
 fi
 
 
+
 AC_ARG_ENABLE([atomic_thread_fence_fences],
-    [AS_HELP_STRING([--disable-atomic_thread_fence_fences], [use atomic_signal_fence() in place of atomic_thread_fence()])])
-if test "$enable_atomic_thread_fence_fences" = no; then
-    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [0], [Set to use atomic_thread_fence() over atomic_signal_fence().])
+    [AS_HELP_STRING([--enable-atomic_thread_fence_fences], [use atomic_thread_fence fences])])
+AC_ARG_ENABLE([atomic_signal_fence_fences],
+    [AS_HELP_STRING([--enable-atomic_signal_fence_fences], [use atomic_signal_fence fences])])
+if test "$enable_atomic_thread_fence_fences" = yes && test "$enable_atomic_signal_fence_fences" = yes; then
+    AC_MSG_ERROR([Cannot use both atomic_thread_fence() and atomic_signal_fence().])
+fi
+if test "$enable_atomic_thread_fence_fences" = yes; then
+    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence fences.])
 else
-    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence() over atomic_signal_fence().].)
+    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [0], [Set to use atomic_thread_fence fences.])
+fi
+if test "$enable_atomic_signal_fence_fences" = yes; then
+    AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [1], [Set to use atomic_signal_fence fences.])
+else
+    AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [0], [Set to use atomic_signal_fence fences.])
 fi
 
-# AC_ARG_ENABLE([atomic_nodeversion],
-#     [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of full atomic nodeversion])])
-# if test "$enable_atomic_nodeversion" = yes; then
-#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use full atomic nodeversion implementation.])
-# else
-#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
-# fi
-
-AC_ARG_WITH([nodeversion_impl],
-    [AS_HELP_STRING([--with-nodeversion_impl=ARG],
-                    [Set node version implementation: "none", "atomic", or "flag" (default: "none")])],
-    [nodeversion_impl="$withval"], [nodeversion_impl="none"])
-if test "$nodeversion_impl" = none; then
+AC_ARG_ENABLE([atomic_nodeversion],
+    [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])
+AC_ARG_ENABLE([flag_nodeversion],
+    [AS_HELP_STRING([--enable-flag_nodeversion], [enable usage of flag nodeversion])])
+if test "$enable_atomic_nodeversion" = yes && test "$enable_flag_nodeversion" = yes; then
+    AC_MSG_ERROR([Cannot use both atomic nodeversion() and flag().])
+elif test "$enable_atomic_nodeversion" = yes; then
+    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use atomic nodeversion implementation.])
+elif test "$enable_flag_nodeversion" = yes; then
+    AC_MSG_ERROR([flag nodeversion not implemented yet])
+    # AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICFLAG], [1], [Define to use flag nodeversion implementation.])
+else
     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
-elif test "$nodeversion_impl" = atomic; then
-    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use full atomic nodeversion implementation.])
-elif test "$nodeversion_impl" = flag; then
-    # AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICFLAG], [1], [Define to use atomic flag-based nodeversion implementation.])
-    AC_MSG_ERROR([$nodeversion_impl: not implemented yet])
-else
-    AC_MSG_ERROR([$nodeversion_impl: unknown arg])
 fi
+
+# AC_ARG_WITH([nodeversion_impl],
+#     [AS_HELP_STRING([--with-nodeversion_impl=ARG],
+#                     [Set node version implementation: "none", "atomic", or "flag" (default: "none")])],
+#     [nodeversion_impl="$withval"], [nodeversion_impl="none"])
+# if test "$nodeversion_impl" = none; then
+#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
+# elif test "$nodeversion_impl" = atomic; then
+#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use full atomic nodeversion implementation.])
+# elif test "$nodeversion_impl" = flag; then
+#     # AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICFLAG], [1], [Define to use atomic flag-based nodeversion implementation.])
+#     AC_MSG_ERROR([$nodeversion_impl: not implemented yet])
+# else
+#     AC_MSG_ERROR([$nodeversion_impl: unknown arg])
+# fi
 # Define a preprocessor macro based on the selected option
-AC_DEFINE_UNQUOTED([NODEVERSION_IMPL], ["$ac_cv_nodeversion_impl"], [Selected node version implementation])
+# AC_DEFINE_UNQUOTED([NODEVERSION_IMPL], ["$ac_cv_nodeversion_impl"], [Selected node version implementation])
 
 AC_DEFINE_UNQUOTED([CACHE_LINE_SIZE], [64], [Assumed size of a cache line.])
 

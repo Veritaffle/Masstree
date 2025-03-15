@@ -160,6 +160,7 @@ inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_REL
     return obj.fetch_and_add(addend, mo);
 }
 
+#if ATOMIC_THREAD_FENCE_FENCES || ATOMIC_SIGNAL_FENCE_FENCES
 //  TODO: disable TSan warnings about atomic_thread_fence
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtsan"
@@ -217,7 +218,7 @@ struct atomic_thread_relax_fence_function {
 inline void atomic_fence() {
 #ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_fence();
-#else
+#elif ATOMIC_SIGNAL_FENCE_FENCES
     atomic_signal_fence();
 #endif
 }
@@ -225,7 +226,7 @@ inline void atomic_fence() {
 inline void atomic_acquire_fence() {
 #ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_acquire_fence();
-#else
+    #elif ATOMIC_SIGNAL_FENCE_FENCES
     atomic_signal_acquire_fence();
 #endif
 }
@@ -233,7 +234,7 @@ inline void atomic_acquire_fence() {
 inline void atomic_release_fence() {
 #ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_release_fence();
-#else
+#elif ATOMIC_SIGNAL_FENCE_FENCES
     atomic_signal_release_fence();
 #endif
 }
@@ -241,7 +242,7 @@ inline void atomic_release_fence() {
 inline void atomic_relax_fence() {
 #ifdef ATOMIC_THREAD_FENCE_FENCES
     atomic_thread_relax_fence();
-#else
+#elif ATOMIC_SIGNAL_FENCE_FENCES
     atomic_signal_relax_fence();
 #endif
 }
@@ -256,6 +257,8 @@ struct atomic_relax_fence_function {
 inline void nonatomic_relax_fence() {
     std::this_thread::yield();
 }
+
+#endif
 
 
 
