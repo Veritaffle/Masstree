@@ -20,9 +20,9 @@
 #include <numa.h>
 #endif
 
-enum { MaxCores = 48 };   // Maximum number of cores kvdb statistics support
-enum { MaxNumaNode = 8 }; // Maximum number of Numa node kvdb statistics support
-enum { CoresPerChip = MaxCores / MaxNumaNode };
+constexpr int MaxCores = 48;   // Maximum number of cores kvdb statistics support
+constexpr int MaxNumaNode = 8; // Maximum number of Numa node kvdb statistics support
+constexpr int CoresPerChip = MaxCores / MaxNumaNode;
 
 namespace Perf {
 
