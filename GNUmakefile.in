@@ -30,17 +30,20 @@ CONFIG = @CONFIG@
 ASMFILES =
 ifeq ($(CONFIG),release)
 	SRCS := $(wildcard $(SRCDIR)/*.cc) $(wildcard $(SRCDIR)/*.c)
-	SRC_EXCLUDE := $(SRCDIR)/test_string.cc \
-				   $(SRCDIR)/mttest.cc \
+	SRC_EXCLUDE := \
 				   $(SRCDIR)/mtd.cc \
 				   $(SRCDIR)/mtclient.cc \
-				   $(SRCDIR)/json_test.cc
+				   $(SRCDIR)/jsontest.cc \
+				   $(SRCDIR)/scantest.cc \
+				   $(SRCDIR)/test_string.cc \
+				   $(SRCDIR)/test_atomics.cc
 	SRCS := $(filter-out $(SRC_EXCLUDE), $(SRCS))
 	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
 endif
 
 $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -S -fverbose-asm -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -o $@ $< \
+	-S -masm=intel -fverbose-asm -fno-inline
 
 all: test_atomics mtd mtclient mttest $(ASMFILES)
 
@@ -124,7 +127,7 @@ stamp-h: config.h.in config.status
 clean:
 	rm -f mtd mtclient mttest test_string test_atomics *.o libjson.a
 	rm -rf .deps
-	rm -rf $(OBJDIR)/*.s
+	rm -rf $(ASMDIR)
 
 DEPFILES := $(wildcard $(DEPSDIR)/*.d)
 ifneq ($(DEPFILES),)
