@@ -321,7 +321,8 @@ class nodeversion {
         //  Verify that expected isn't dirty.
         masstree_invariant(!(expected.v_.load() & P::dirty_mask));
         //  Set lock bit in expected.
-        expected.v_.fetch_and_or(P::lock_bit);
+        // expected.v_.fetch_and_or(P::lock_bit);
+        expected.v_.store(expected.v_.load() | P::lock_bit);
         //  Acquire fence, since we have acquired the lock.
         atomic_acquire_fence();
         //  Verify that expected and this match.
