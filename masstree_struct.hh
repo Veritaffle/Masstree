@@ -117,6 +117,28 @@ class internode : public node_base<P> {
         : node_base<P>(false), nkeys_(0), height_(height), parent_() {
     }
 
+#if NODEVERSION_IMPL_FULLATOMIC
+    void non_atomics_copy(const internode<P>& other) {
+        size_t pod = sizeof(internode<P>) - sizeof(node_base<P>);
+        debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
+            reinterpret_cast<uintptr_t>(&(this->nkeys_)),
+            reinterpret_cast<uintptr_t>(this));
+        memcpy(&(this->nkeys_), &(other.nkeys_), pod);
+    }
+
+    internode(const internode<P>& other)
+        : node_base<P>(other.version_value()) {
+        non_atomics_copy(other);
+
+    }
+
+    internode<P>& operator=(const internode<P>& other) {
+        node_base<P>::operator=(other);
+        non_atomics_copy(other);
+        return *this;
+    }
+#endif
+
     static internode<P>* make(uint32_t height, threadinfo& ti) {
         void* ptr = ti.pool_allocate(sizeof(internode<P>),
                                      memtag_masstree_internode);

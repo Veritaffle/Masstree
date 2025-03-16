@@ -152,8 +152,16 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) con
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
     internode<P> copy(*this);
-    for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i)
+#if NODEVERSION_IMPL_HANDROLLED
+    for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i) {
         memcpy(&copy, this, sizeof(copy));
+    }
+#elif NODEVERSION_IMPL_FULLATOMIC
+    for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i) {
+        copy = *this;
+    }
+#endif
+
     int indent = 2 * depth;
     if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
         indent = 2 * P::print_max_indent_depth;
