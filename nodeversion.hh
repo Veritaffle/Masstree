@@ -227,11 +227,9 @@ class nodeversion {
         // value_type v = n.v_.load();
         // atomic_release_fence();
 
-        v_.store(v, MO_RELEASE);
-
+        // v_.store(n.v_.load(), MO_RELEASE);
         // v_.store(n.v_.load(), MO_SEQ_CST);
-
-        // v_.store(n.v_.load());
+        v_.store(n.v_.load());
     }
     
     explicit nodeversion(bool isleaf)
@@ -239,10 +237,9 @@ class nodeversion {
         // value_type v = isleaf ? (value_type) P::isleaf_bit : 0;
         // atomic_release_fence();
         
-        v_.store(isleaf ? (value_type) P::isleaf_bit : 0, MO_RELEASE);
-
+        // v_.store(isleaf ? (value_type) P::isleaf_bit : 0, MO_RELEASE);
         // v_.store(isleaf ? (value_type) P::isleaf_bit : 0, MO_SEQ_CST);
-        // v_.store(isleaf ? (value_type) P::isleaf_bit : 0);
+        v_.store(isleaf ? (value_type) P::isleaf_bit : 0);
     }
     
     

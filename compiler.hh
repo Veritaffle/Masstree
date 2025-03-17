@@ -139,6 +139,9 @@ public:
     T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
         return _v.fetch_add(addend, mo);
     }
+    T fetch_and_and(T arg, memory_order mo = MO_RELAXED) {
+        return _v.fetch_and(arg, mo);
+    }
     T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
         return _v.fetch_or(arg, mo);
     }
