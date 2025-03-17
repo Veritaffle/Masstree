@@ -221,21 +221,46 @@ class nodeversion {
     nodeversion() {
     }
 
-    nodeversion(const nodeversion &n) :
-        v_(n.v_.load()) {
-    }
+    
+    nodeversion(const nodeversion &n)
+    {
+        // value_type v = n.v_.load();
+        // atomic_release_fence();
 
-    nodeversion<P>& operator=(const nodeversion<P>& other) {
-        v_.store(other.v_.load());
-        return *this;
+        v_.store(v, MO_RELEASE);
+
+        // v_.store(n.v_.load(), MO_SEQ_CST);
+
+        // v_.store(n.v_.load());
     }
     
-    explicit nodeversion(bool isleaf) {
-        v_.store(isleaf ? (value_type) P::isleaf_bit : 0);
+    explicit nodeversion(bool isleaf)
+    {
+        // value_type v = isleaf ? (value_type) P::isleaf_bit : 0;
+        // atomic_release_fence();
+        
+        v_.store(isleaf ? (value_type) P::isleaf_bit : 0, MO_RELEASE);
+
+        // v_.store(isleaf ? (value_type) P::isleaf_bit : 0, MO_SEQ_CST);
+        // v_.store(isleaf ? (value_type) P::isleaf_bit : 0);
+    }
+    
+    
+    /*
+    nodeversion(const nodeversion &n)
+        : v_(n.v_.load()) {}
+
+    explicit nodeversion(bool isleaf)
+        : v_(isleaf ? (value_type) P::isleaf_bit : 0) {}
+    */
+
+    nodeversion<P>& operator=(const nodeversion<P>& other) {
+        v_.store(other.v_.load(), MO_ACQUIRE);
+        return *this;
     }
 
     bool isleaf() const {
-        return v_.load() & P::isleaf_bit;
+        return v_.load(MO_ACQUIRE) & P::isleaf_bit;
     }
 
     nodeversion<P> stable() const {
@@ -373,7 +398,8 @@ class nodeversion {
             // x.v_ = (x.v_ + ((x.v_ & P::inserting_bit) << 2)) & P::unlock_mask;
             x.v_.store((prev + ((prev & P::inserting_bit) << 2)) & P::unlock_mask);
         }
-            
+        
+        //  TODO: this could be a release operation instead of a release fence?
         atomic_release_fence();
         v_.store(x.v_.load());
     }
@@ -418,11 +444,12 @@ class nodeversion {
     }
     void mark_nonroot() {
         masstree_invariant(locked());
-        v_.fetch_and_add(~P::root_bit);
+        v_.fetch_and_and(~P::root_bit);
         atomic_acquire_fence();
     }
 
     void assign_version(nodeversion<P> x) {
+        //  TODO: release?
         v_.store(x.v_.load());
     }
 

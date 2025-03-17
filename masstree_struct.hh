@@ -133,7 +133,7 @@ class internode : public node_base<P> {
     }
 
     internode<P>& operator=(const internode<P>& other) {
-        node_base<P>::operator=(other);
+        this->assign_version(other);
         non_atomics_copy(other);
         return *this;
     }
