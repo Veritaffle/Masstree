@@ -411,18 +411,30 @@ fi
 
 
 AC_ARG_WITH([build_config],
-    AS_HELP_STRING([--with-build_config=VALUE], [Set build configuration (e.g., release, debug)]),
+    AS_HELP_STRING([--with-build_config=VALUE], [set build configuration (e.g., release, debug)]),
     [CONFIG=$withval],
     [CONFIG=release]
 )
 AC_SUBST(CONFIG)
+
+AC_ARG_WITH([nodeversion],
+    AS_HELP_STRING([--with-nodeversion=VALUE], [set nodeversion style]),
+    [ac_nodeversion=$withval],
+    [ac_nodeversion=atomic]
+)
+AS_CASE([$ac_nodeversion],
+    [handrolled], [AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define if nodeversion should use original handrolled atomics.])],
+    [atomicallfences], [AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICALLFENCES], [1], [Define if nodeversion should use the all-fence atomic implementation.])],
+    [atomic], [AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMIC], [1], [Define if nodeversion should use the atomic implementation.])],
+    [*], [AC_MSG_ERROR([Invalid nodeversion: $ac_nodeversion.])]
+)
 
 AC_ARG_ENABLE([atomic_thread_fence_fences],
     [AS_HELP_STRING([--enable-atomic_thread_fence_fences], [use atomic_thread_fence fences])])
 AC_ARG_ENABLE([atomic_signal_fence_fences],
     [AS_HELP_STRING([--enable-atomic_signal_fence_fences], [use atomic_signal_fence fences])])
 if test "$enable_atomic_thread_fence_fences" = yes && test "$enable_atomic_signal_fence_fences" = yes; then
-    AC_MSG_ERROR([Cannot use both atomic_thread_fence() and atomic_signal_fence().])
+    AC_MSG_ERROR([Cannot use both --enable-atomic_thread_fence_fences and --enable-atomic_signal_fence_fences.])
 fi
 if test "$enable_atomic_thread_fence_fences" = yes; then
     AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence fences.])
@@ -435,20 +447,20 @@ else
     AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [0], [Set to use atomic_signal_fence fences.])
 fi
 
-AC_ARG_ENABLE([atomic_nodeversion],
-    [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])
-AC_ARG_ENABLE([flag_nodeversion],
-    [AS_HELP_STRING([--enable-flag_nodeversion], [enable usage of flag nodeversion])])
-if test "$enable_atomic_nodeversion" = yes && test "$enable_flag_nodeversion" = yes; then
-    AC_MSG_ERROR([Cannot use both atomic nodeversion() and flag().])
-elif test "$enable_atomic_nodeversion" = yes; then
-    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use atomic nodeversion implementation.])
-elif test "$enable_flag_nodeversion" = yes; then
-    AC_MSG_ERROR([flag nodeversion not implemented yet])
-    # AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICFLAG], [1], [Define to use flag nodeversion implementation.])
-else
-    AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
-fi
+# AC_ARG_ENABLE([atomic_nodeversion],
+#     [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])
+# AC_ARG_ENABLE([flag_nodeversion],
+#     [AS_HELP_STRING([--enable-flag_nodeversion], [enable usage of flag nodeversion])])
+# if test "$enable_atomic_nodeversion" = yes && test "$enable_flag_nodeversion" = yes; then
+#     AC_MSG_ERROR([Cannot use both atomic nodeversion() and flag().])
+# elif test "$enable_atomic_nodeversion" = yes; then
+#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_FULLATOMIC], [1], [Define to use atomic nodeversion implementation.])
+# elif test "$enable_flag_nodeversion" = yes; then
+#     AC_MSG_ERROR([flag nodeversion not implemented yet])
+#     # AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_ATOMICFLAG], [1], [Define to use flag nodeversion implementation.])
+# else
+#     AC_DEFINE_UNQUOTED([NODEVERSION_IMPL_HANDROLLED], [1], [Define to use handrolled noderversion implementation.].)
+# fi
 
 # AC_ARG_WITH([nodeversion_impl],
 #     [AS_HELP_STRING([--with-nodeversion_impl=ARG],

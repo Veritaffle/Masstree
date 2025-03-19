@@ -210,7 +210,7 @@ class nodeversion {
     }
 };
 
-#elif defined(NODEVERSION_IMPL_FULLATOMIC)
+#elif defined(NODEVERSION_IMPL_ATOMICALLFENCES)
 //  implementation with underlying datatype as relaxed_atomic
 template <typename P>
 class nodeversion {
@@ -474,7 +474,7 @@ class nodeversion {
         : v_(v) {
     }
 };
-#elif defined(NODEVERSION_IMPL_ATOMICFLAG)
+#elif defined(NODEVERSION_IMPL_ATOMICMIX)
 //  lock bit separated as atomic flag
 //  TODO: can I even do this?
 #endif

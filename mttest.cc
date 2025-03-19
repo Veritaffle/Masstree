@@ -1054,12 +1054,12 @@ Try 'mttest --help' for options.\n");
 #endif
 
 
-#if NODEVERSION_IMPL_HANDROLLED
+#if defined(NODEVERSION_IMPL_HANDROLLED)
     fprintf(stderr, "nodeversion: handrolled\n");
-#elif NODEVERSION_IMPL_FULLATOMIC
+#elif defined( NODEVERSION_IMPL_ATOMICALLFENCES)
+    fprintf(stderr, "nodeversion: atomic all fences\n");
+#elif defined(NODEVERSION_IMPL_ATOMIC)
     fprintf(stderr, "nodeversion: atomic\n");
-#elif NODEVERSION_IMPL_ATOMICFLAG
-    fprintf(stderr, "nodeversion: atomic flag\n");
 #else
     assert(0);
 #endif

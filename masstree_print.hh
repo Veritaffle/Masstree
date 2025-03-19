@@ -152,11 +152,11 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) con
     f = f ? f : stderr;
     prefix = prefix ? prefix : "";
     internode<P> copy(*this);
-#if NODEVERSION_IMPL_HANDROLLED
+#if defined(NODEVERSION_IMPL_HANDROLLED)
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i) {
         memcpy(&copy, this, sizeof(copy));
     }
-#elif NODEVERSION_IMPL_FULLATOMIC
+#elif defined(NODEVERSION_IMPL_ATOMICALLFENCES) || defined(NODEVERSION_IMPL_ATOMIC)
     for (int i = 0; i < 100 && (copy.has_changed(*this) || this->inserting() || this->splitting()); ++i) {
         copy = *this;
     }

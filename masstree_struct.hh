@@ -117,7 +117,7 @@ class internode : public node_base<P> {
         : node_base<P>(false), nkeys_(0), height_(height), parent_() {
     }
 
-#if NODEVERSION_IMPL_FULLATOMIC
+#if defined(NODEVERSION_IMPL_ATOMICALLFENCES) || defined(NODEVERSION_IMPL_ATOMIC)
     void non_atomics_copy(const internode<P>& other) {
         size_t pod = sizeof(internode<P>) - sizeof(node_base<P>);
         debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
