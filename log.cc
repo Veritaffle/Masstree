@@ -29,9 +29,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-//  TODO new headers
-#include "atomic_pthread.hh"
-
 using lcdf::String;
 
 kvepoch_t global_log_epoch;
@@ -225,7 +222,7 @@ void loginfo::initialize(const String& logfile) {
     // pthread_t pthread;
     // int r = pthread_create(&pthread, 0, trampoline, this);
     // ti_->pthread().store(pthread, MO_RELAXED);
-    int r = pthread_create(ti_->pthread(), 0, trampoline, this);
+    int r = pthread_create(&ti_->pthread(), 0, trampoline, this);
     always_assert(r == 0);
 }
 

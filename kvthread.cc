@@ -30,11 +30,11 @@ int threadinfo::no_pool_value;
 #endif
 
 inline threadinfo::threadinfo(int purpose, int index) {
-    s.gc_epoch_ = s.perform_gc_epoch_ = 0;
-    s.logger_ = nullptr;
-    s.next_ = nullptr;
-    s.purpose_ = purpose;
-    s.index_ = index;
+    gc_epoch_ = perform_gc_epoch_ = 0;
+    logger_ = nullptr;
+    next_ = nullptr;
+    purpose_ = purpose;
+    index_ = index;
 
     for (size_t i = 0; i != sizeof(pool_) / sizeof(pool_[0]); ++i) {
         pool_[i] = nullptr;
@@ -54,7 +54,7 @@ threadinfo *threadinfo::make(int purpose, int index) {
     static int threads_initialized;
 
     threadinfo* ti = new(malloc(8192)) threadinfo(purpose, index);
-    ti->s.next_ = allthreads;
+    ti->next_ = allthreads;
     allthreads = ti;
 
     if (!threads_initialized) {
@@ -135,9 +135,9 @@ void threadinfo::hard_rcu_quiesce() {
 
 done:
     if (!count)
-        s.perform_gc_epoch_ = epoch_bound; // do GC again immediately
+        perform_gc_epoch_ = epoch_bound; // do GC again immediately
     else
-        s.perform_gc_epoch_ = epoch_bound + 1;
+        perform_gc_epoch_ = epoch_bound + 1;
 }
 
 void threadinfo::report_rcu(void *ptr) const
@@ -154,7 +154,7 @@ void threadinfo::report_rcu(void *ptr) const
             }
             if (lg->e_[i].ptr_ == ptr)
                 fprintf(stderr, "thread %d: rcu %p@%d: %s as %x @%" PRIu64 "\n",
-                        s.index_, lg, i, status ? "waiting" : "freed",
+                        index_, lg, i, status ? "waiting" : "freed",
                         lg->e_[i].u_.tag, e);
             else if (!lg->e_[i].ptr_)
                 e = lg->e_[i].u_.epoch;

@@ -78,15 +78,14 @@ KVTREES = query_masstree.o \
 	string_slice.o
 
 mtd: mtd.o log.o checkpoint.o file.o misc.o $(KVTREES) \
-	kvio.o libjson.a atomic_pthread.o
+	kvio.o libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
-mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a \
-	atomic_pthread.o
+mtclient: mtclient.o misc.o testrunner.o kvio.o libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 mttest: mttest.o misc.o checkpoint.o $(KVTREES) testrunner.o \
-	kvio.o libjson.a atomic_pthread.o
+	kvio.o libjson.a
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(MEMMGR) $(LDFLAGS) $(LIBS)
 
 test_string: test_string.o string.o straccum.o compiler.o

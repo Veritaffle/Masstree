@@ -100,7 +100,7 @@ class threadinfo {
     static threadinfo* allthreads;
 
     threadinfo* next() const {
-        return s.next_;
+        return next_;
     }
 
     static threadinfo* make(int purpose, int index);
@@ -108,17 +108,17 @@ class threadinfo {
 
     // thread information
     int purpose() const {
-        return s.purpose_;
+        return purpose_;
     }
     int index() const {
-        return s.index_;
+        return index_;
     }
     loginfo* logger() const {
-        return s.logger_;
+        return logger_;
     }
     void set_logger(loginfo* logger) {
-        assert(!s.logger_ && logger);
-        s.logger_ = logger;
+        assert(!logger_ && logger);
+        logger_ = logger;
     }
 
     // timestamps
@@ -262,17 +262,17 @@ class threadinfo {
     enum { rcu_free_count = 128 }; // max # of entries to free per rcu_quiesce() call
     void rcu_start() {
         auto ge = globalepoch.load();
-        if (s.gc_epoch_ != ge)
-            s.gc_epoch_ = ge;
+        if (gc_epoch_ != ge)
+            gc_epoch_ = ge;
     }
     void rcu_stop() {
-        if (s.perform_gc_epoch_ != active_epoch.load())
+        if (perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
-        s.gc_epoch_ = 0;
+        gc_epoch_ = 0;
     }
     void rcu_quiesce() {
         rcu_start();
-        if (s.perform_gc_epoch_ != active_epoch.load())
+        if (perform_gc_epoch_ != active_epoch.load())
             hard_rcu_quiesce();
     }
     typedef ::mrcu_callback mrcu_callback;
@@ -281,11 +281,11 @@ class threadinfo {
     }
 
     // thread management
-    relaxed_atomic<pthread_t>& pthread() {
-        return s.pthreadid_;
+    pthread_t& pthread() {
+        return pthreadid_;
     }
     pthread_t pthread() const {
-        return s.pthreadid_.load();
+        return pthreadid_;
     }
 
     void report_rcu(void* ptr) const;
@@ -304,8 +304,8 @@ class threadinfo {
             int index_;         // the index of a udp, logging, tcp,
                                 // checkpoint or recover thread
 
-            relaxed_atomic<pthread_t> pthreadid_;
-        } s;
+            pthread_t pthreadid_;
+        };
         char padding1[CACHE_LINE_SIZE];
     };
     
@@ -370,7 +370,7 @@ inline mrcu_epoch_type threadinfo::min_active_epoch() {
     auto ae = globalepoch.load();
     for (threadinfo* ti = allthreads; ti; ti = ti->next()) {
         prefetch((const void*) ti->next());
-        mrcu_epoch_type te = ti->s.gc_epoch_;
+        mrcu_epoch_type te = ti->gc_epoch_;
         if (te && mrcu_signed_epoch_type(te - ae) < 0)
             ae = te;
     }

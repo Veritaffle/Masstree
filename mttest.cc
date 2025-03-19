@@ -70,9 +70,6 @@
 #include <algorithm>
 #include <numeric>
 
-// TODO: new headers
-#include "atomic_pthread.hh"
-
 static std::vector<int> cores;
 relaxed_atomic<bool> timeout[2] = {false, false};
 double duration[2] = {10, 0};
@@ -740,7 +737,7 @@ void runtest(int nthreads, void* (*func)(void*)) {
         // pthread_t pthread;
         // int r = pthread_create(&pthread, 0, func, tis[i]);
         // tis[i]->pthread().store(pthread, MO_RELAXED);
-        int r = pthread_create(tis[i]->pthread(), 0, func, tis[i]);
+        int r = pthread_create(&tis[i]->pthread(), 0, func, tis[i]);
         always_assert(r == 0);
     }
     for (int i = 0; i < nthreads; ++i) {
