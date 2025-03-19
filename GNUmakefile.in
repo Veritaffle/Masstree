@@ -47,9 +47,6 @@ $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
 
 all: test_atomics mtd mtclient mttest $(ASMFILES)
 
-foo: foo.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
 %.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
 
