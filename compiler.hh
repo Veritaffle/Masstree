@@ -226,36 +226,38 @@ struct atomic_thread_relax_fence_function {
 };
 
 
-
+#if !defined(ATOMIC_THREAD_FENCE_DEFAULT) && !defined(ATOMIC_SIGNAL_FENCE_DEFAULT)
+    #error "Neither ATOMIC_THREAD_FENCE_DEFAULT nor ATOMIC_SIGNAL_FENCE_DEFAULT set!"
+#endif
 
 inline void atomic_fence() {
-#ifdef ATOMIC_THREAD_FENCE_FENCES
+#if defined(ATOMIC_THREAD_FENCE_DEFAULT)
     atomic_thread_fence();
-#elif ATOMIC_SIGNAL_FENCE_FENCES
+#else // defined(ATOMIC_SIGNAL_FENCE_DEFAULT == true)
     atomic_signal_fence();
 #endif
 }
 
 inline void atomic_acquire_fence() {
-#ifdef ATOMIC_THREAD_FENCE_FENCES
+#if defined(ATOMIC_THREAD_FENCE_DEFAULT)
     atomic_thread_acquire_fence();
-    #elif ATOMIC_SIGNAL_FENCE_FENCES
+#else // defined(ATOMIC_SIGNAL_FENCE_DEFAULT == true)
     atomic_signal_acquire_fence();
 #endif
 }
 
 inline void atomic_release_fence() {
-#ifdef ATOMIC_THREAD_FENCE_FENCES
+#if defined(ATOMIC_THREAD_FENCE_DEFAULT)
     atomic_thread_release_fence();
-#elif ATOMIC_SIGNAL_FENCE_FENCES
+#else // defined(ATOMIC_SIGNAL_FENCE_DEFAULT == true)
     atomic_signal_release_fence();
 #endif
 }
 
 inline void atomic_relax_fence() {
-#ifdef ATOMIC_THREAD_FENCE_FENCES
+#if defined(ATOMIC_THREAD_FENCE_DEFAULT)
     atomic_thread_relax_fence();
-#elif ATOMIC_SIGNAL_FENCE_FENCES
+#else // defined(ATOMIC_SIGNAL_FENCE_DEFAULT == true)
     atomic_signal_relax_fence();
 #endif
 }

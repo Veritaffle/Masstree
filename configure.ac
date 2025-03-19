@@ -429,19 +429,27 @@ AS_CASE([$ac_nodeversion],
     [*], [AC_MSG_ERROR([Invalid nodeversion: $ac_nodeversion.])]
 )
 
-AC_ARG_ENABLE([atomic_thread_fence_fences],
-    [AS_HELP_STRING([--enable-atomic_thread_fence_fences], [use atomic_thread_fence fences])])
-AC_ARG_ENABLE([atomic_signal_fence_fences],
-    [AS_HELP_STRING([--enable-atomic_signal_fence_fences], [use atomic_signal_fence fences])])
-if test "$enable_atomic_thread_fence_fences" = yes && test "$enable_atomic_signal_fence_fences" = yes; then
-    AC_MSG_ERROR([Cannot use both --enable-atomic_thread_fence_fences and --enable-atomic_signal_fence_fences.])
+AC_ARG_ENABLE([atomic_thread_fence_default],
+    [AS_HELP_STRING([--enable-atomic_thread_fence_default], [set default atomic fence implementation])])
+if test "$enable_atomic_thread_fence_default" = yes; then
+    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_DEFAULT], [1], [Set to use atomic_thread_fence fences by default.])
+else
+    AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_DEFAULT], [1], [Set to use atomic_signal_fence fences by default.])
 fi
-if test "$enable_atomic_thread_fence_fences" = yes; then
-    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence fences.])
-fi
-if test "$enable_atomic_signal_fence_fences" = yes; then
-    AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [1], [Set to use atomic_signal_fence fences.])
-fi
+
+# AC_ARG_ENABLE([atomic_thread_fence_fences],
+#     [AS_HELP_STRING([--enable-atomic_thread_fence_fences], [use atomic_thread_fence fences])])
+# AC_ARG_ENABLE([atomic_signal_fence_fences],
+#     [AS_HELP_STRING([--enable-atomic_signal_fence_fences], [use atomic_signal_fence fences])])
+# if test "$enable_atomic_thread_fence_fences" = yes && test "$enable_atomic_signal_fence_fences" = yes; then
+#     AC_MSG_ERROR([Cannot use both --enable-atomic_thread_fence_fences and --enable-atomic_signal_fence_fences.])
+# fi
+# if test "$enable_atomic_thread_fence_fences" = yes; then
+#     AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence fences.])
+# fi
+# if test "$enable_atomic_signal_fence_fences" = yes; then
+#     AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [1], [Set to use atomic_signal_fence fences.])
+# fi
 
 AC_ARG_ENABLE([relax_fence_sched_yield],
     [AS_HELP_STRING([--enable-relax_fence_sched_yield], [use sched_yield() in relax fences])])

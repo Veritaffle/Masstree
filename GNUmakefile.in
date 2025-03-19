@@ -28,7 +28,8 @@ LDFLAGS = @LDFLAGS@
 
 CONFIG = @CONFIG@
 ASMFILES =
-# ifeq ($(CONFIG),release)
+
+#	build all assembly files
 ifeq ($(CONFIG),DisabledForAllVersionsCurrently)
 	SRCS := $(wildcard $(SRCDIR)/*.cc) $(wildcard $(SRCDIR)/*.c)
 	SRC_EXCLUDE := \
@@ -41,6 +42,15 @@ ifeq ($(CONFIG),DisabledForAllVersionsCurrently)
 	SRCS := $(filter-out $(SRC_EXCLUDE), $(SRCS))
 	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
 endif
+#	build mttest.cc.s only
+ifeq ($(CONFIG),release)
+	SRCS := mttest.cc
+	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
+endif
+
+
+# ifeq ($(CONFIG),release)
+
 
 $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -o $@ $< \

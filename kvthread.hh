@@ -166,7 +166,7 @@ class threadinfo {
             : ti_(ti), ci_(ci) {
         }
         void operator()() {
-            relax_fence();
+            atomic_relax_fence();
             ti_->mark(ci_);
         }
     };
@@ -185,7 +185,7 @@ class threadinfo {
         }
         template <typename V>
         void operator()(V v) {
-            relax_fence();
+            atomic_relax_fence();
             ti_->mark(threadcounter(tc_stable + (v.isleaf() << 1) + v.splitting()));
         }
     };

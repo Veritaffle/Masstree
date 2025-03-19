@@ -96,6 +96,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
         lv.prefetch(n_->keylenx_[kx_.p]);
         state_ = n_->ksuf_matches(kx_.p, ka_);
         if (state_ < 0 && !n_->has_changed(v) && lv.layer()->is_root()) {
+            //  reach_leaf from next layer
             ka_.shift_by(-state_);
             root = lv.layer();
             goto retry;

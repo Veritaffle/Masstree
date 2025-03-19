@@ -16,8 +16,8 @@ LDFLAGS_RELEASE=""
 
 CONFIGFLAGS_BASE=""
 CONFIGFLAGS_PTHREAD=""
-CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences --enable-atomic_signal_fence_fences "
-CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_fences "
+CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences  "
+CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_default "
 CONFIGFLAGS_ATOMICNV_SCHEDYIELD="--with-nodeversion=atomic --enable-relax_fence_sched_yield "
 CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic "
 

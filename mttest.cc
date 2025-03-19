@@ -1055,13 +1055,11 @@ Try 'mttest --help' for options.\n");
     fprintf(stderr, "nodeversion: atomic\n");
 #endif
 
-#if defined(NODEVERSION_IMPL_ATOMICALLFENCES)
-    #if defined(ATOMIC_THREAD_FENCE_FENCES)
-        fprintf(stderr, "atomic_thread_fence used\n");
-    #endif
-    #if defined(ATOMIC_SIGNAL_FENCE_FENCES)
-        fprintf(stderr, "atomic_signal_fence used\n");
-    #endif
+#if defined(ATOMIC_THREAD_FENCE_DEFAULT)
+    fprintf(stderr, "atomic_thread_fence default\n");
+#endif
+#if defined(ATOMIC_SIGNAL_FENCE_DEFAULT)
+    fprintf(stderr, "atomic_signal_fence default\n");
 #endif
 
 #if defined(RELAX_FENCE_SCHED_YIELD)
