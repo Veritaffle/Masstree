@@ -298,6 +298,7 @@ class nodeversion {
     }
 
     bool has_changed(nodeversion<P> x) const {
+        //  TODO: I'm pretty sure this is no longer necessary.
         atomic_fence();
         return (x.v_.load() ^ v_.load()) > P::lock_bit;
     }
@@ -305,6 +306,7 @@ class nodeversion {
         return v_.load() & P::root_bit;
     }
     bool has_split(nodeversion<P> x) const {
+        //  TODO: I'm pretty sure this is no longer necessary.
         atomic_fence();
         return (x.v_.load() ^ v_.load()) >= P::vsplit_lowbit;
     }
@@ -403,45 +405,53 @@ class nodeversion {
 
     void mark_insert() {
         masstree_invariant(locked());
-        v_.fetch_and_or(P::inserting_bit);
+        v_.store(v_.load() | P::inserting_bit);
         atomic_acquire_fence();
     }
     nodeversion<P> mark_insert(nodeversion<P> current_version) {
         masstree_invariant((atomic_fence(), v_.load() == current_version.v_.load()));
         masstree_invariant(current_version.v_.load() & P::lock_bit);
         // v_ = (current_version.v_ |= P::inserting_bit);
-        v_.store(current_version.v_.fetch_and_or(P::inserting_bit) | P::inserting_bit);
+        // v_.store(current_version.v_.fetch_and_or(P::inserting_bit) | P::inserting_bit);
+        nodeversion<P> marked = current_version.v_.store.load() | P::inserting_bit;
+        current_version.v_.store(marked);
+        v_.store(marked);
         atomic_acquire_fence();
         return current_version;
     }
     void mark_split() {
         masstree_invariant(locked());
-        v_.fetch_and_or(P::splitting_bit);
+        v_.store(v_.load() | P::splitting_bit);
         atomic_acquire_fence();
     }
     void mark_change(bool is_split) {
         masstree_invariant(locked());
         v_.fetch_and_or((is_split + 1) << P::inserting_shift);
+        v_.store(v_.load() | (is_split + 1) << P::inserting_shift);
         atomic_acquire_fence();
     }
     nodeversion<P> mark_deleted() {
         masstree_invariant(locked());
-        v_.fetch_and_or(P::deleted_bit | P::splitting_bit);
+        // v_.fetch_and_or(P::deleted_bit | P::splitting_bit);
+        v_.store(v_.load() | P::deleted_bit | P::splitting_bit);
         atomic_acquire_fence();
         return *this;
     }
     void mark_deleted_tree() {
         masstree_invariant(locked() && is_root());
-        v_.fetch_and_or(P::deleted_bit);
+        // v_.fetch_and_or(P::deleted_bit);
+        v_.store(v_.load() | P::deleted_bit);
         atomic_acquire_fence();
     }
     void mark_root() {
-        v_.fetch_and_or(P::root_bit);
+        // v_.fetch_and_or(P::root_bit);
+        v_.store(v_.load() | P::root_bit);
         atomic_acquire_fence();
     }
     void mark_nonroot() {
         masstree_invariant(locked());
-        v_.fetch_and_and(~P::root_bit);
+        // v_.fetch_and_and(~P::root_bit);
+        v_.store(v_.load() & ~P::root_bit);
         atomic_acquire_fence();
     }
 
