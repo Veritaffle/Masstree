@@ -172,7 +172,6 @@ inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_REL
 
 
 
-#if ATOMIC_THREAD_FENCE_FENCES || ATOMIC_SIGNAL_FENCE_FENCES
 //  TODO: disable TSan warnings about atomic_thread_fence
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtsan"
@@ -269,8 +268,6 @@ struct atomic_relax_fence_function {
 inline void nonatomic_relax_fence() {
     std::this_thread::yield();
 }
-
-#endif
 
 
 
