@@ -28,7 +28,8 @@ LDFLAGS = @LDFLAGS@
 
 CONFIG = @CONFIG@
 ASMFILES =
-ifeq ($(CONFIG),release)
+# ifeq ($(CONFIG),release)
+ifeq ($(CONFIG),DisabledForAllVersionsCurrently)
 	SRCS := $(wildcard $(SRCDIR)/*.cc) $(wildcard $(SRCDIR)/*.c)
 	SRC_EXCLUDE := \
 				   $(SRCDIR)/mtd.cc \

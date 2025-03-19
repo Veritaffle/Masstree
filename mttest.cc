@@ -1045,23 +1045,29 @@ Try 'mttest --help' for options.\n");
         signal(*it, abortable_signal_handler);
 #endif
 
-#if ATOMIC_THREAD_FENCE_FENCES
-    fprintf(stderr, "atomic_thread_fence used\n");
-#elif ATOMIC_SIGNAL_FENCE_FENCES
-    fprintf(stderr, "atomic_signal_fence used\n");
-#else
-    fprintf(stderr, "no atomic fence used\n");
-#endif
-
-
 #if defined(NODEVERSION_IMPL_HANDROLLED)
     fprintf(stderr, "nodeversion: handrolled\n");
-#elif defined( NODEVERSION_IMPL_ATOMICALLFENCES)
+#endif
+#if defined(NODEVERSION_IMPL_ATOMICALLFENCES)
     fprintf(stderr, "nodeversion: atomic all fences\n");
-#elif defined(NODEVERSION_IMPL_ATOMIC)
+#endif
+#if defined(NODEVERSION_IMPL_ATOMIC)
     fprintf(stderr, "nodeversion: atomic\n");
+#endif
+
+#if defined(NODEVERSION_IMPL_ATOMICALLFENCES)
+    #if defined(ATOMIC_THREAD_FENCE_FENCES)
+        fprintf(stderr, "atomic_thread_fence used\n");
+    #endif
+    #if defined(ATOMIC_SIGNAL_FENCE_FENCES)
+        fprintf(stderr, "atomic_signal_fence used\n");
+    #endif
+#endif
+
+#if defined(RELAX_FENCE_SCHED_YIELD)
+    fprintf(stderr, "relax fences use sched_yield()\n");
 #else
-    assert(0);
+    fprintf(stderr, "relax fences do not use sched_yield()\n");
 #endif
 
     if (treetypes.empty())

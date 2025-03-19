@@ -438,13 +438,15 @@ if test "$enable_atomic_thread_fence_fences" = yes && test "$enable_atomic_signa
 fi
 if test "$enable_atomic_thread_fence_fences" = yes; then
     AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [1], [Set to use atomic_thread_fence fences.])
-else
-    AC_DEFINE_UNQUOTED([ATOMIC_THREAD_FENCE_FENCES], [0], [Set to use atomic_thread_fence fences.])
 fi
 if test "$enable_atomic_signal_fence_fences" = yes; then
     AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [1], [Set to use atomic_signal_fence fences.])
-else
-    AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [0], [Set to use atomic_signal_fence fences.])
+fi
+
+AC_ARG_ENABLE([relax_fence_sched_yield],
+    [AS_HELP_STRING([--enable-relax_fence_sched_yield], [use sched_yield() in relax fences])])
+if test "$enable_relax_fence_sched_yield" = yes; then
+    AC_DEFINE_UNQUOTED([RELAX_FENCE_SCHED_YIELD], [1], [Set to use sched_yield() in atomic relax fences.])
 fi
 
 # AC_ARG_ENABLE([atomic_nodeversion],
