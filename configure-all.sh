@@ -16,7 +16,7 @@ CONFIGFLAGS_BASE=""
 CONFIGFLAGS_PTHREAD=""
 CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences --enable-atomic_signal_fence_fences "
 CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_fences "
-CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomicmix "
+CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic "
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
 CONFIGFLAGS_RELEASE="--with-build_config=release --disable-assertions --disable-preconditions --disable-invariants "
