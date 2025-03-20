@@ -54,7 +54,7 @@ endif
 
 $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -o $@ $< \
-	-S -masm=intel -fverbose-asm -fno-inline
+	-S -fverbose-asm
 
 all: test_atomics mtd mtclient mttest $(ASMFILES)
 
