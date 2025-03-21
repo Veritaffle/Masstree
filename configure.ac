@@ -451,11 +451,24 @@ fi
 #     AC_DEFINE_UNQUOTED([ATOMIC_SIGNAL_FENCE_FENCES], [1], [Set to use atomic_signal_fence fences.])
 # fi
 
-AC_ARG_ENABLE([relax_fence_sched_yield],
-    [AS_HELP_STRING([--enable-relax_fence_sched_yield], [use sched_yield() in relax fences])])
-if test "$enable_relax_fence_sched_yield" = yes; then
-    AC_DEFINE_UNQUOTED([RELAX_FENCE_SCHED_YIELD], [1], [Set to use sched_yield() in atomic relax fences.])
-fi
+# AC_ARG_ENABLE([relax_fence_sched_yield],
+#     [AS_HELP_STRING([--enable-relax_fence_sched_yield], [use sched_yield() in relax fences])])
+# if test "$enable_relax_fence_sched_yield" = yes; then
+#     AC_DEFINE_UNQUOTED([RELAX_FENCE_SCHED_YIELD], [1], [Set to use sched_yield() in atomic relax fences.])
+# fi
+
+AC_ARG_WITH([relax_fence_pause],
+    AS_HELP_STRING([--with-relax_fence_pause=VALUE], [set pausing mechanism for relax fences]),
+    [ac_relax_fence_pause=$withval],
+    [ac_relax_fence_pause=none]
+)
+AS_CASE([$ac_relax_fence_pause],
+    [none], [],
+    [pause], [AC_DEFINE_UNQUOTED([RELAX_FENCE_PAUSE], [1], [Define if relax fences should use _mm_pause().])],
+    [schedyield], [AC_DEFINE_UNQUOTED([RELAX_FENCE_SCHED_YIELD], [1], [Define if relax fences should use std::sched_yield().])],
+    [*], [AC_MSG_ERROR([Invalid relax_fence_pause: $ac_relax_fence_pause.])]
+)
+
 
 # AC_ARG_ENABLE([atomic_nodeversion],
 #     [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])

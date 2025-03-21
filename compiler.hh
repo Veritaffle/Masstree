@@ -24,6 +24,7 @@
 #endif
 #include <atomic>
 #include <thread>
+#include <immintrin.h>
 
 #define arraysize(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -190,6 +191,8 @@ inline void atomic_signal_release_fence() {
 inline void atomic_signal_relax_fence() {
 #if defined(RELAX_FENCE_SCHED_YIELD)
     std::this_thread::yield();
+#elif defined(RELAX_FENCE_PAUSE)
+    _mm_pause();
 #endif
     std::atomic_signal_fence(MO_ACQ_REL);
 }
@@ -215,6 +218,8 @@ inline void atomic_thread_release_fence() {
 inline void atomic_thread_relax_fence() {
 #if defined(RELAX_FENCE_SCHED_YIELD)
     std::this_thread::yield();
+#elif defined(RELAX_FENCE_PAUSE)
+    _mm_pause();
 #endif
     std::atomic_thread_fence(MO_ACQ_REL);
 }

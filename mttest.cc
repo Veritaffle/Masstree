@@ -1061,6 +1061,8 @@ Try 'mttest --help' for options.\n");
 
 #if defined(RELAX_FENCE_SCHED_YIELD)
     fprintf(stderr, "relax fences use sched_yield()\n");
+#elif defined(RELAX_FENCE_PAUSE)
+    fprintf(stderr, "relax fences use _mm_pause()\n");
 #else
     fprintf(stderr, "relax fences do not use sched_yield()\n");
 #endif

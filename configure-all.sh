@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv-schedyield")
+# VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
+# VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
+VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
+
 # CONFIGS=("debug" "release")
-VARIANTS=("atomicnv_schedyield" "atomicnv")
 CONFIGS=("release")
 
 #	TODO: produce asm
@@ -18,7 +20,8 @@ CONFIGFLAGS_BASE=""
 CONFIGFLAGS_PTHREAD=""
 CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences  "
 CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_default "
-CONFIGFLAGS_ATOMICNV_SCHEDYIELD="--with-nodeversion=atomic --enable-relax_fence_sched_yield "
+CONFIGFLAGS_ATOMICNV_SCHEDYIELD="--with-nodeversion=atomic --with-relax_fence_pause=schedyield "
+CONFIGFLAGS_ATOMICNV_PAUSE="--with-nodeversion=atomic --with-relax_fence_pause=pause "
 CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic "
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
@@ -63,6 +66,9 @@ for variant in "${VARIANTS[@]}"; do
 				;;
 			"atomicnv_schedyield")
 				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV_SCHEDYIELD
+				;;
+			"atomicnv_pause")
+				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV_PAUSE
 				;;
 			"atomicnv")
 				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV
