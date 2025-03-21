@@ -44,7 +44,7 @@ ifeq ($(CONFIG),DisabledForAllVersionsCurrently)
 endif
 #	build mttest.cc.s only
 ifeq ($(CONFIG),release)
-	SRCS := mttest.cc
+	SRCS := $(SRCDIR)/mttest.cc
 	ASMFILES := $(patsubst $(SRCDIR)/%, $(ASMDIR)/%.s, $(SRCS))
 endif
 
@@ -53,8 +53,8 @@ endif
 
 
 $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -o $@ $< \
-	-S -fverbose-asm
+	$(CXX) -g0 -W -Wall -std=c++20 -pthread -O3 $(CXXFLAGS) $(DEPCFLAGS) -include config.h \
+	-o $@ $< -S -fverbose-asm
 
 all: test_atomics mtd mtclient mttest $(ASMFILES)
 
