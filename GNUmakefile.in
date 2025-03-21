@@ -56,7 +56,10 @@ $(ASMDIR)/%.s: $(SRCDIR)/% $(ASMDIR)/stamp
 	$(CXX) -g0 -W -Wall -std=c++20 -pthread -O3 $(CXXFLAGS) $(DEPCFLAGS) -include config.h \
 	-o $@ $< -S -fverbose-asm
 
-all: test_atomics mtd mtclient mttest $(ASMFILES)
+all: test_atomics mtd mtclient mttest $(ASMFILES) $(ASMDIR)/objdump_mttest.txt
+
+$(ASMDIR)/objdump_mttest.txt: mttest $(ASMDIR)/stamp
+	objdump -d --source-comment ./mttest > $(ASMDIR)/objdump_mttest.txt
 
 %.o: %.c config.h $(DEPSDIR)/stamp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) -include config.h -c -o $@ $<
