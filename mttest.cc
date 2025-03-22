@@ -614,7 +614,8 @@ MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
 MAKE_TESTRUNNER(conflictscan1, kvtest_conflictscan1(client));
 MAKE_TESTRUNNER(r1, kvtest_r1_seed(client, kvtest_first_seed + client.id()));
-MAKE_TESTRUNNER(w1, kvtest_w1_seed(client, kvtest_first_seed + client.id()));   //  shouldn't align with r1
+MAKE_TESTRUNNER(w1, kvtest_w1_seed(client, kvtest_first_seed + client.id()));
+MAKE_TESTRUNNER(r1nolim, kvtest_r1nolim_seed(client, kvtest_first_seed + client.id()));
 
 
 enum {

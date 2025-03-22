@@ -1470,6 +1470,49 @@ void kvtest_r1_seed(C &client, int seed)
     client.report(result);
 }
 
+// do four million gets.
+// in a random order.
+// call from mttest after w1 w/ limit and duration set
+// intended to timeout rather than finish reads
+template <typename C>
+void kvtest_r1nolim_seed(C &client, int seed)
+{
+    int n;
+    if (client.limit() == ~(uint64_t) 0) {
+        n = 4000000;
+    } else {
+        n = std::min(client.limit(), (uint64_t) INT_MAX);
+    }
+    long *a = (long *) malloc(sizeof(long) * n);
+    always_assert(a);
+
+    client.rand.seed(seed);
+    for (int i = 0; i < n; i++) {
+        a[i] = client.rand();
+    }
+    client.rand();  //  so order doesn't match w1
+    for (int i = 0; i < n; i++) {
+        int i1 = client.rand() % n;
+        long tmp = a[i];
+        a[i] = a[i1];
+        a[i1] = tmp;
+    }
+
+    double t0 = now();
+    int i = 0;
+    for (; i < n && !client.timeout(0); i++) {
+        client.get_check_key10(a[i], a[i] + 1);
+    }
+    always_assert(i != n);
+    client.wait_all();
+    double t1 = now();
+
+    Json result = Json().set("total", (long) (i / (t1 - t0)))
+        .set("gets", i)
+        .set("gets_per_sec", i / (t1 - t0));
+    client.report(result);
+}
+
 // do four million of inserts to distinct keys.
 // sometimes overwrites, but only w/ same value.
 // different clients might use same key sometimes.
