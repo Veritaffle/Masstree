@@ -166,7 +166,11 @@ class threadinfo {
             : ti_(ti), ci_(ci) {
         }
         void operator()() {
+#if defined(NODEVERSION_IMPL_HANDROLLED)
+            relax_fence();
+#else
             atomic_relax_fence();
+#endif
             ti_->mark(ci_);
         }
     };
@@ -185,7 +189,11 @@ class threadinfo {
         }
         template <typename V>
         void operator()(V v) {
+#if defined(NODEVERSION_IMPL_HANDROLLED)
+            relax_fence();
+#else
             atomic_relax_fence();
+#endif
             ti_->mark(threadcounter(tc_stable + (v.isleaf() << 1) + v.splitting()));
         }
     };
