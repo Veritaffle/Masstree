@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
-# VARIANTS=("pthread" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
+# VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
+# VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
 VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
+VARIANTS=("atomicnv_schedyield")
 
 # CONFIGS=("debug" "release")
 CONFIGS=("release")
+CONFIGS=("debug")
 
 #	TODO: produce asm
 CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
@@ -17,12 +19,12 @@ LDFLAGS_DEBUG="-fsanitize=thread "
 LDFLAGS_RELEASE=""
 
 CONFIGFLAGS_BASE=""
-CONFIGFLAGS_PTHREAD=""
-CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences  "
+CONFIGFLAGS_BETA="--with-nodeversion=handrolled "
+CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences "
 CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_default "
 CONFIGFLAGS_ATOMICNV_SCHEDYIELD="--with-nodeversion=atomic --with-relax_fence_pause=schedyield "
 CONFIGFLAGS_ATOMICNV_PAUSE="--with-nodeversion=atomic --with-relax_fence_pause=pause "
-CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic "
+CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic --with-relax_fence_pause=none "
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
 CONFIGFLAGS_RELEASE="--with-build_config=release --disable-assertions --disable-preconditions --disable-invariants "
@@ -55,8 +57,8 @@ for variant in "${VARIANTS[@]}"; do
 		esac
 
 		case "$variant" in
-			"pthread")
-				CONFIGFLAGS+=$CONFIGFLAGS_PTHREAD
+			"beta")
+				CONFIGFLAGS+=$CONFIGFLAGS_BETA
 				;;
 			"atomicnv_signal")
 				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV_SIGNAL
