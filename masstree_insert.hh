@@ -111,6 +111,7 @@ bool tcursor<P>::make_new_layer(threadinfo& ti) {
     // retry.
     n_->mark_insert();
     fence();
+    //  TODO: this assignment should be a release op
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
     if (twig_head != n_)

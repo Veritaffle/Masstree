@@ -120,9 +120,9 @@ class internode : public node_base<P> {
 #if defined(NODEVERSION_IMPL_ATOMICALLFENCES) || defined(NODEVERSION_IMPL_ATOMIC)
     void non_atomics_copy(const internode<P>& other) {
         size_t pod = sizeof(internode<P>) - sizeof(node_base<P>);
-        debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
-            reinterpret_cast<uintptr_t>(&(this->nkeys_)),
-            reinterpret_cast<uintptr_t>(this));
+        // debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
+            // reinterpret_cast<uintptr_t>(&(this->nkeys_)),
+            // reinterpret_cast<uintptr_t>(this));
         memcpy(&(this->nkeys_), &(other.nkeys_), pod);
     }
 
@@ -759,7 +759,7 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
 void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
-    debug_fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
+    // debug_fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
         
