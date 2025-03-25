@@ -21,7 +21,9 @@
 
 namespace Masstree {
 using lcdf::Str;
+#if defined(STRINGBAG_IMPL_ATOMIC)
 using lcdf::atomic_Str;
+#endif
 using lcdf::String;
 
 class key_unparse_printable_string;

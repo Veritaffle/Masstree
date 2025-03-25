@@ -21,10 +21,7 @@
 #include <string.h>
 class threadinfo;
 
-
-
-#if false
-//  OG version
+#if defined(STRINGBAG_IMPL_ORIGINAL) ////////////////////////////////////////
 
 /** @brief Provide access to T-typed slices of a string. */
 template <typename T> struct string_slice {
@@ -172,7 +169,7 @@ template <typename T> struct string_slice {
     }
 };
 
-#else
+#elif defined(STRINGBAG_IMPL_ATOMIC) ////////////////////////////////////////
 
 /** @brief Provide access to T-typed slices of a string. */
 template <typename T> struct string_slice {
@@ -328,6 +325,9 @@ template <typename T> struct string_slice {
       }
 };
 
+#elif defined(STRINGBAG_IMPL_NOREASSIGN) ////////////////////////////////////////
+
+//  TODO
 
 #endif
 

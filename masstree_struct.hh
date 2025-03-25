@@ -413,6 +413,16 @@ class leaf : public node_base<P> {
     bool has_ksuf(int p) const {
         return keylenx_has_ksuf(keylenx_[p]);
     }
+#if defined(STRINGBAG_IMPL_ORIGINAL)
+    Str ksuf(int p, int keylenx) const {
+        (void) keylenx;
+        masstree_precondition(keylenx_has_ksuf(keylenx));
+        return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
+    }
+    Str ksuf(int p) const {
+        return ksuf(p, keylenx_[p]);
+    }
+#elif defined(STRINGBAG_IMPL_ATOMIC)
     atomic_Str ksuf(int p, int keylenx) const {
         (void) keylenx;
         masstree_precondition(keylenx_has_ksuf(keylenx));
@@ -421,6 +431,7 @@ class leaf : public node_base<P> {
     atomic_Str ksuf(int p) const {
         return ksuf(p, keylenx_[p]);
     }
+#endif
     bool ksuf_equals(int p, const key_type& ka) const {
         return ksuf_equals(p, ka, keylenx_[p]);
     }
@@ -438,7 +449,11 @@ class leaf : public node_base<P> {
             return 1;
         if (keylenx == layer_keylenx)
             return -(int) sizeof(ikey_type);
+#if defined(STRINGBAG_IMPL_ORIGINAL)
+        Str s = ksuf(p, keylenx);
+#elif defined(STRINGBAG_IMPL_ATOMIC)
         atomic_Str s = ksuf(p, keylenx);
+#endif
         return s.len == ka.suffix().len
             && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
     }

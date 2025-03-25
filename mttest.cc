@@ -1054,28 +1054,40 @@ Try 'mttest --help' for options.\n");
 #endif
 
 #if defined(NODEVERSION_IMPL_HANDROLLED)
-    fprintf(stderr, "nodeversion: handrolled\n");
+    debug_fprintf(stderr, "NODEVERSION_IMPL_HANDROLLED\n");
 #endif
 #if defined(NODEVERSION_IMPL_ATOMICALLFENCES)
-    fprintf(stderr, "nodeversion: atomic all fences\n");
+    debug_fprintf(stderr, "NODEVERSION_IMPL_ATOMICALLFENCES\n");
 #endif
 #if defined(NODEVERSION_IMPL_ATOMIC)
-    fprintf(stderr, "nodeversion: atomic\n");
+    debug_fprintf(stderr, "NODEVERSION_IMPL_ATOMIC\n");
 #endif
 
 #if defined(ATOMIC_THREAD_FENCE_DEFAULT)
-    fprintf(stderr, "atomic_thread_fence default\n");
+    debug_fprintf(stderr, "ATOMIC_THREAD_FENCE_DEFAULT\n");
 #endif
 #if defined(ATOMIC_SIGNAL_FENCE_DEFAULT)
-    fprintf(stderr, "atomic_signal_fence default\n");
+    debug_fprintf(stderr, "ATOMIC_SIGNAL_FENCE_DEFAULT\n");
 #endif
 
 #if defined(RELAX_FENCE_SCHED_YIELD)
-    fprintf(stderr, "relax fences use sched_yield()\n");
-#elif defined(RELAX_FENCE_PAUSE)
-    fprintf(stderr, "relax fences use _mm_pause()\n");
-#else
-    fprintf(stderr, "relax fences do not use any pause\n");
+    debug_fprintf(stderr, "RELAX_FENCE_SCHED_YIELD\n");
+#endif
+#if defined(RELAX_FENCE_PAUSE)
+    debug_fprintf(stderr, "RELAX_FENCE_PAUSE\n");
+#endif
+#if !defined(RELAX_FENCE_SCHED_YIELD) && !defined(RELAX_FENCE_PAUSE)
+    debug_fprintf(stderr, "RELAX_FENCE: no pause\n");
+#endif
+
+#if defined(STRINGBAG_IMPL_ORIGINAL)
+    debug_fprintf(stderr, "STRINGBAG_IMPL_ORIGINAL\n");
+#endif
+#if defined(STRINGBAG_IMPL_ATOMIC)
+    debug_fprintf(stderr, "STRINGBAG_IMPL_ATOMIC\n");
+#endif
+#if defined(STRINGBAG_IMPL_NOREASSIGN)
+    debug_fprintf(stderr, "STRINGBAG_IMPL_NOREASSIGN\n");
 #endif
 
     if (treetypes.empty())

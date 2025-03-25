@@ -18,11 +18,6 @@
 #include "masstree.hh"
 #include "string_slice.hh"
 
-namespace Masstree {
-
-#if false
-//  OG
-
 /** @brief Strings used as Masstree keys.
 
     Masstree key strings are divided into parts: an initial slice, called
@@ -35,6 +30,11 @@ namespace Masstree {
     Masstree. However, <code>k.shift()</code> is faster than the assignment,
     and its effects can be undone by the <code>k.unshift_all()</code>
     method. */
+
+#if defined(STRINGBAG_IMPL_ORIGINAL)
+
+namespace Masstree {
+
 template <typename I>
 class key {
   public:
@@ -236,20 +236,14 @@ class key {
     const char* first_;
 };
 
-#else
+template <typename I> constexpr int key<I>::ikey_size;
 
-/** @brief Strings used as Masstree keys.
+} // namespace Masstree
 
-    Masstree key strings are divided into parts: an initial slice, called
-    the <em>ikey</em>, and a suffix. The ikey is stored as a byte-swapped
-    integer, which is faster to compare than a string.
+#elif defined(STRINGBAG_IMPL_ATOMIC)
 
-    Keys can be <em>shifted</em> by the shift() method. <code>k.shift()</code>
-    is like <code>k = key(k.suffix())</code>: the key is reconstructed from
-    the original key's suffix. This corresponds to descending a layer in
-    Masstree. However, <code>k.shift()</code> is faster than the assignment,
-    and its effects can be undone by the <code>k.unshift_all()</code>
-    method. */
+namespace Masstree {
+    
 template <typename I>
 class key {
     public:
@@ -472,11 +466,15 @@ class key {
     };
 };
 
-#endif
-
 template <typename I> constexpr int key<I>::ikey_size;
 
 } // namespace Masstree
+
+#elif defined(STRINBAG_IMPL_NOREASSIGN)
+
+//  TODO
+
+#endif
 
 template <typename I>
 inline std::ostream& operator<<(std::ostream& stream,

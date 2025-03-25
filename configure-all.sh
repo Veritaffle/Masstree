@@ -3,7 +3,7 @@
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
 # VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
-VARIANTS=("atomicnv_pause")
+VARIANTS=("atomicnv_pause" "stringbag_atomic")
 # VARIANTS=("beta")
 
 # CONFIGS=("debug" "release")
@@ -29,8 +29,8 @@ CONFIGFLAGS_ATOMICNV_PAUSE="--with-nodeversion=atomic --with-relax_fence_pause=p
 CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic --with-relax_fence_pause=none "
 
 CONFIGFLAGS_STRINGBAG_BASE=$CONFIGFLAGS_ATOMICNV_PAUSE
-CONFIGFLAGS_STRINGBAG_ATOMIC=$CONFIGFLAGS_STRINGBAG_BASE + "--with-stringbag_impl=atomic "
-CONFIGFLAGS_STRINGBAG_NOREASSIGN=$CONFIGFLAGS_STRINGBAG_BASE + "--with-stringbag_impl=no_reassign "
+CONFIGFLAGS_STRINGBAG_ATOMIC=$CONFIGFLAGS_STRINGBAG_BASE" --with-stringbag_impl=atomic "
+CONFIGFLAGS_STRINGBAG_NOREASSIGN=$CONFIGFLAGS_STRINGBAG_BASE" --with-stringbag_impl=no_reassign "
 
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
