@@ -284,8 +284,8 @@ struct atomic_Str : public String_base_templated<atomic_Str, relaxed_atomic<char
     long to_i() const {         // XXX does not handle negative
         long x = 0;
         int p;
-        for (p = 0; p < len && s[p] >= '0' && s[p] <= '9'; ++p)
-            x = (x * 10) + s[p] - '0';
+        for (p = 0; p < len && s[p].load() >= '0' && s[p].load() <= '9'; ++p)
+            x = (x * 10) + s[p].load() - '0';
         return p == len && p != 0 ? x : -1;
     }
 

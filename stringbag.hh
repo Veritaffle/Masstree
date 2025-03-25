@@ -61,8 +61,16 @@ class stringbag {
         info_type()
             : pos(0), len(0) {
         }
-        info_type(unsigned p, unsigned l)
-            : pos(p), len(l) {
+        // info_type(unsigned p, unsigned l)
+        //     : pos(p), len(l) {
+        // }
+
+        void assign(unsigned p, unsigned l) {
+            pos = p;
+            len = l;
+        }
+        void assign() {
+            assign(0, 0);
         }
     };
 
@@ -104,7 +112,7 @@ class stringbag {
         size_ = firstpos;
         capacity_ = capacity - 1;
         for (int i = 0; i != width; ++i) {
-            info_[i] = info_type();
+            info_[i].assign();
         }
 
         // setup atomic string data
@@ -158,7 +166,7 @@ class stringbag {
         } else
             return false;
         atomic_memcpy(reinterpret_cast<relaxed_atomic<char>*>(s_ + pos), s, len);
-        info_[p] = info_type(pos, len);
+        info_[p].assign(pos, len);
 
         // debug_fprintf(stderr, "START_STRINGBAG_PRINT\n");
         // print(15, stderr, "[stringbag]", 4);
