@@ -56,8 +56,8 @@ class stringbag {
 
  private:
     struct info_type {
-        offset_type pos;
-        offset_type len;
+        relaxed_atomic<offset_type> pos;
+        relaxed_atomic<offset_type> len;
         info_type()
             : pos(0), len(0) {
         }
@@ -129,8 +129,9 @@ class stringbag {
     /** @brief Return the string at position @a p.
         @pre @a p >= 0 && @a p < bag width */
     lcdf::atomic_Str get(int p) const {
-        info_type info = info_[p];
-        return lcdf::atomic_Str(reinterpret_cast<const relaxed_atomic<char>*>(s_ + info.pos), info.len);
+        offset_type pos = info_[p].pos;
+        offset_type len = info_[p].len;
+        return lcdf::atomic_Str(reinterpret_cast<const relaxed_atomic<char>*>(s_ + pos), len);
     }
 
     /** @brief Assign the string at position @a p to @a s.
@@ -153,7 +154,7 @@ class stringbag {
             //  need a space that's at least big enough for a string_slice with slice_type uintptr_t
             //  and at least big enough for the length of the new string
             pos = size_;
-            size_ += len;
+            size_ = size_ + len;
         } else
             return false;
         atomic_memcpy(reinterpret_cast<relaxed_atomic<char>*>(s_ + pos), s, len);
@@ -185,8 +186,8 @@ class stringbag {
   private:
     union {
         struct {
-            offset_type size_;
-            offset_type capacity_;
+            relaxed_atomic<offset_type> size_;
+            relaxed_atomic<offset_type> capacity_;
             info_type info_[1];
         };
         char s_[1];

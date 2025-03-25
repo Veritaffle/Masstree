@@ -307,7 +307,7 @@ template <typename T> struct string_slice {
       template<typename C, typename D>
       static bool equals_sloppy(const C* a, const D* b, int len) {
   #if HAVE_UNALIGNED_ACCESS
-          if constexpr ((std::is_same_v<C, char> ||
+          if constexpr ((std::is_same_v<C, char> &&
                          std::is_same_v<D, char>)) { 
                 if (len <= size) {
                     typename mass::make_unsigned<T>::type delta
