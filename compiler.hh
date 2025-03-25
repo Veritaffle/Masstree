@@ -189,6 +189,7 @@ inline void atomic_signal_release_fence() {
 }
 
 inline void atomic_signal_relax_fence() {
+    // fprintf(stderr, "relax_fence()\n");
 #if defined(RELAX_FENCE_SCHED_YIELD)
     std::this_thread::yield();
 #elif defined(RELAX_FENCE_PAUSE)
@@ -216,6 +217,7 @@ inline void atomic_thread_release_fence() {
 }
 
 inline void atomic_thread_relax_fence() {
+    // fprintf(stderr, "relax_fence()\n");
 #if defined(RELAX_FENCE_SCHED_YIELD)
     std::this_thread::yield();
 #elif defined(RELAX_FENCE_PAUSE)

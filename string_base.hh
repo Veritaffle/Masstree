@@ -23,10 +23,26 @@
 #include <ctype.h>
 #include <iostream>
 namespace lcdf {
+
+template <typename T>
+struct make_unsigned_like {
+    using type = std::make_unsigned_t<T>;
+};
+
+// Specialization for std::atomic<T>
+template <typename T>
+struct make_unsigned_like<relaxed_atomic<T>> {
+    using type = relaxed_atomic<std::make_unsigned_t<T>>;
+};
+
+template <typename T>
+using make_unsigned_like_t = typename make_unsigned_like<T>::type;
+
+
+
 class StringAccum;
 #define LCDF_CONSTANT_CSTR(cstr) ((cstr) && __builtin_constant_p(strlen((cstr))))
-
-class String_generic {
+class String_generic_templated_common {
   public:
     static const char empty_data[1];
     static const char bool_data[11]; // "false\0true\0"
@@ -34,45 +50,53 @@ class String_generic {
     static const char base64_encoding_table[65];
     static const unsigned char base64_decoding_map[256];
     enum { out_of_memory_length = 14 };
-    static bool out_of_memory(const char* s) {
+};
+
+template <typename T = char, typename U = char>
+class String_generic_templated : public String_generic_templated_common {
+  public:
+    static bool out_of_memory(const T* s) {
         return unlikely(s >= out_of_memory_data
                         && s <= out_of_memory_data + out_of_memory_length);
     }
-    static bool equals(const char* a, int a_len, const char* b, int b_len) {
+    static bool equals(const T* a, int a_len, const U* b, int b_len) {
         return a_len == b_len && memcmp(a, b, a_len) == 0;
     }
-    static int compare(const char* a, int a_len, const char* b, int b_len);
-    static inline int compare(const unsigned char* a, int a_len,
-                              const unsigned char* b, int b_len) {
-        return compare(reinterpret_cast<const char*>(a), a_len,
-                       reinterpret_cast<const char*>(b), b_len);
+    static int compare(const T* a, int a_len, const U* b, int b_len);
+    static inline int compare(const make_unsigned_like_t<T>* a, int a_len,
+                              const make_unsigned_like_t<U>* b, int b_len) {
+        return compare(reinterpret_cast<const T*>(a), a_len,
+                       reinterpret_cast<const U*>(b), b_len);
     }
-    static int natural_compare(const char* a, int a_len, const char* b, int b_len);
-    static int natural_compare(const unsigned char* a, int a_len,
-                               const unsigned char* b, int b_len) {
-        return natural_compare(reinterpret_cast<const char*>(a), a_len,
-                               reinterpret_cast<const char*>(b), b_len);
+    static int natural_compare(const T* a, int a_len, const U* b, int b_len);
+    static int natural_compare(const make_unsigned_like_t<T>* a, int a_len,
+                               const make_unsigned_like_t<U>* b, int b_len) {
+        return natural_compare(reinterpret_cast<const T*>(a), a_len,
+                               reinterpret_cast<const U*>(b), b_len);
     }
-    static bool starts_with(const char *a, int a_len, const char *b, int b_len) {
+    static bool starts_with(const T *a, int a_len, const U *b, int b_len) {
         return a_len >= b_len && memcmp(a, b, b_len) == 0;
     }
-    static int find_left(const char *s, int len, int start, char x);
-    static int find_left(const char *s, int len, int start, const char *x, int x_len);
-    static int find_right(const char *s, int len, int start, char x);
-    static int find_right(const char *s, int len, int start, const char *x, int x_len);
-    static bool glob_match(const char* s, int slen, const char* pattern, int plen);
-    template <typename T> static inline typename T::substring_type ltrim(const T &str);
-    template <typename T> static inline typename T::substring_type rtrim(const T &str);
-    template <typename T> static inline typename T::substring_type trim(const T &str);
-    static hashcode_t hashcode(const char *s, int len);
-    static hashcode_t hashcode(const char *first, const char *last) {
+    static int find_left(const T *s, int len, int start, U x);
+    static int find_left(const T *s, int len, int start, const U *x, int x_len);
+    static int find_right(const T *s, int len, int start, U x);
+    static int find_right(const T *s, int len, int start, const U *x, int x_len);
+    static bool glob_match(const T* s, int slen, const U* pattern, int plen);
+    template <typename V> static inline typename V::substring_type ltrim(const V &str);
+    template <typename V> static inline typename V::substring_type rtrim(const V &str);
+    template <typename V> static inline typename V::substring_type trim(const V &str);
+    static hashcode_t hashcode(const T *s, int len);
+    static hashcode_t hashcode(const T *first, const T *last) {
         return hashcode(first, last - first);
     }
-    static long to_i(const char* first, const char* last);
+    static long to_i(const T* first, const T* last);
+    //  TODO: not templated
     static char upper_hex_nibble(int n) {
         return n + (n > 9 ? 'A' - 10 : '0');
     }
 };
+
+using String_generic = String_generic_templated<>;
 
 template <typename T>
 class String_base {
@@ -478,24 +502,385 @@ inline size_t hash_value(const String_base<T>& x) {
     return String_generic::hashcode(x.data(), x.length());
 }
 
-template <typename T>
-inline typename T::substring_type String_generic::ltrim(const T &str) {
+template <typename T, typename U>
+int String_generic_templated<T, U>::compare(const T* a, int a_len, const U* b, int b_len)
+{
+    if (a != b) {
+        int len = a_len < b_len ? a_len : b_len;
+        int cmp = memcmp(a, b, len);
+        if (cmp != 0)
+            return cmp;
+    }
+    return a_len - b_len;
+}
+
+template <typename T, typename U>
+int String_generic_templated<T, U>::natural_compare(const T* a, int a_len,
+                                    const U* b, int b_len) {
+    const T* ae = a + a_len;
+    const U* be = b + b_len;
+    const char* aperiod = 0;
+    bool aperiod_negative = false;
+    int raw_compare = 0;
+
+    while (a < ae && b < be) {
+        if (isdigit((unsigned char) *a) && isdigit((unsigned char) *b)) {
+            // compare the two numbers, but treat them as strings
+            // (a decimal conversion might cause overflow)
+            bool potential_decimal = (a == aperiod);
+
+            // check if both are negative (note that if we get here, entire
+            // string prefixes are identical)
+            bool negative = false;
+            if (a > ae - a_len && a[-1] == '-'
+                && (a == ae - a_len + 1
+                    || isspace((unsigned char) a[-2])))
+                negative = true;
+
+            // skip initial '0's, but remember any difference in length
+            const char *ia = a, *ib = b;
+            while (a < ae && *a == '0')
+                ++a;
+            while (b < be && *b == '0')
+                ++b;
+            int longer_zeros = (a - ia) - (b - ib);
+
+            // walk over digits, remembering first nonidentical digit comparison
+            int digit_compare = 0;
+            bool a_good, b_good;
+            while (1) {
+                a_good = a < ae && isdigit((unsigned char) *a);
+                b_good = b < be && isdigit((unsigned char) *b);
+                if (!a_good || !b_good)
+                    break;
+                if (digit_compare == 0)
+                    digit_compare = *a - *b;
+                ++a;
+                ++b;
+            }
+
+            // real number comparison: leading zeros are significant,
+            // digit comparisons take precedence
+            if (potential_decimal) {
+                const T *ax = a;
+                const U *bx = b;
+                while (ax < ae && isdigit((unsigned char) *ax))
+                    ++ax;
+                while (bx < be && isdigit((unsigned char) *bx))
+                    ++bx;
+                // watch for IP addresses: don't treat "0.2." like a decimal
+                if (!(ax + 1 < ae && *ax == '.' && !isspace((unsigned char) ax[1]))
+                    && !(bx + 1 < be && *bx == '.' && !isspace((unsigned char) bx[1]))) {
+                    negative = aperiod_negative;
+                    if (longer_zeros)
+                        return negative ? 1 : -1;
+                    if (digit_compare)
+                        a_good = b_good;
+                }
+            }
+            // if one number is longer, it must also be larger
+            if (a_good != b_good)
+                return negative == a_good ? -1 : 1;
+            // otherwise, digit comparisons take precedence
+            if (digit_compare)
+                return negative == (digit_compare > 0) ? -1 : 1;
+            // as a last resort, the longer string of zeros is greater
+            if (longer_zeros)
+                return longer_zeros;
+            // prepare for potential decimal comparison later
+            if (!aperiod) {
+                a_good = a + 1 < ae && *a == '.'
+                    && isdigit((unsigned char) a[1]);
+                b_good = b + 1 < be && *b == '.'
+                    && isdigit((unsigned char) b[1]);
+                if (a_good != b_good)
+                    return negative == b_good ? 1 : -1;
+                else if (a_good) {
+                    aperiod = a + 1;
+                    aperiod_negative = negative;
+                }
+            }
+
+            // if we get here, the numeric portions were byte-for-byte
+            // identical; move on
+        } else if (isdigit((unsigned char) *a))
+            return isalpha((unsigned char) *b) ? -1 : 1;
+        else if (isdigit((unsigned char) *b))
+            return isalpha((unsigned char) *a) ? 1 : -1;
+        else {
+            int alower = (unsigned char) tolower((unsigned char) *a);
+            int blower = (unsigned char) tolower((unsigned char) *b);
+            if (alower != blower)
+                return alower - blower;
+            if (raw_compare == 0)
+                raw_compare = (unsigned char) *a - (unsigned char) *b;
+            if (*a != '.')
+                aperiod = 0;
+            ++a;
+            ++b;
+        }
+    }
+
+    if ((ae - a) != (be - b))
+        return (ae - a) - (be - b);
+    else
+        return raw_compare;
+}
+
+template <typename T, typename U>
+hashcode_t String_generic_templated<T,U>::hashcode(const T *s, int len)
+{
+    //  TODO: only enabled for char, char
+    if constexpr (!(std::is_same_v<T, char> && std::is_same_v<U, char>)) {
+        assert(0);
+    }
+
+    if (len <= 0)
+        return 0;
+
+    uint32_t hash = len;
+    int rem = hash & 3;
+    const char *end = s + len - rem;
+    uint32_t last16;
+
+#if !HAVE_INDIFFERENT_ALIGNMENT
+    if (!(reinterpret_cast<uintptr_t>(s) & 1)) {
+#endif
+#define get16(p) (*reinterpret_cast<const uint16_t *>((p)))
+        for (; s != end; s += 4) {
+            hash += get16(s);
+            uint32_t tmp = (get16(s + 2) << 11) ^ hash;
+            hash = (hash << 16) ^ tmp;
+            hash += hash >> 11;
+        }
+        if (rem >= 2) {
+            last16 = get16(s);
+            goto rem2;
+        }
+#undef get16
+#if !HAVE_INDIFFERENT_ALIGNMENT
+    } else {
+# if !__i386__ && !__x86_64__ && !__arch_um__
+#  define get16(p) (((unsigned char) (p)[0] << 8) + (unsigned char) (p)[1])
+# else
+#  define get16(p) ((unsigned char) (p)[0] + ((unsigned char) (p)[1] << 8))
+# endif
+        // should be exactly the same as the code above
+        for (; s != end; s += 4) {
+            hash += get16(s);
+            uint32_t tmp = (get16(s + 2) << 11) ^ hash;
+            hash = (hash << 16) ^ tmp;
+            hash += hash >> 11;
+        }
+        if (rem >= 2) {
+            last16 = get16(s);
+            goto rem2;
+        }
+# undef get16
+    }
+#endif
+
+    /* Handle end cases */
+    if (0) {                    // weird organization avoids uninitialized
+      rem2:                     // variable warnings
+        if (rem == 3) {
+            hash += last16;
+            hash ^= hash << 16;
+            hash ^= ((unsigned char) s[2]) << 18;
+            hash += hash >> 11;
+        } else {
+            hash += last16;
+            hash ^= hash << 11;
+            hash += hash >> 17;
+        }
+    } else if (rem == 1) {
+        hash += (unsigned char) *s;
+        hash ^= hash << 10;
+        hash += hash >> 1;
+    }
+
+    /* Force "avalanching" of final 127 bits */
+    hash ^= hash << 3;
+    hash += hash >> 5;
+    hash ^= hash << 4;
+    hash += hash >> 17;
+    hash ^= hash << 25;
+    hash += hash >> 6;
+
+    return hash;
+}
+
+template <typename T, typename U>
+int String_generic_templated<T,U>::find_left(const T *s, int len, int start,
+                          U x)
+{
+    if (start < 0)
+        start = 0;
+    for (int i = start; i < len; ++i)
+        if (s[i] == x)
+            return i;
+    return -1;
+}
+
+template <typename T, typename U>
+int String_generic_templated<T,U>::find_left(const T *s, int len, int start,
+                          const U *x, int x_len)
+{
+    if (start < 0)
+        start = 0;
+    if (x_len == 0)
+        return start <= len ? start : -1;
+    int max_pos = len - x_len;
+    for (int i = start; i <= max_pos; ++i)
+        if (memcmp(s + i, x, x_len) == 0)
+            return i;
+    return -1;
+}
+
+template <typename T, typename U>
+int String_generic_templated<T,U>::find_right(const T *s, int len, int start,
+                           U x)
+{
+    if (start >= len)
+        start = len - 1;
+    for (int i = start; i >= 0; --i)
+        if (s[i] == x)
+            return i;
+    return -1;
+}
+
+template <typename T, typename U>
+int String_generic_templated<T,U>::find_right(const T *s, int len, int start,
+                           const U *x, int x_len)
+{
+    if (start >= len)
+        start = len - x_len;
+    if (x_len == 0)
+        return start >= 0 ? start : -1;
+    for (int i = start; i >= 0; --i)
+        if (memcmp(s + i, x, x_len) == 0)
+            return i;
+    return -1;
+}
+
+template <typename T, typename U>
+long String_generic_templated<T,U>::to_i(const T* s, const T* ends) {
+    bool neg;
+    if (s != ends && (s[0] == '-' || s[0] == '+')) {
+        neg = s[0] == '-';
+        ++s;
+    } else
+        neg = false;
+    if (s == ends || !isdigit((unsigned char) *s))
+        return 0;
+    unsigned long x = (unsigned char) *s - '0';
+    for (++s; s != ends && isdigit((unsigned char) *s); ++s)
+        x = x * 10 + *s - '0';  // XXX overflow
+    return neg ? -x : x;
+}
+
+template <typename T, typename U>
+bool String_generic_templated<T,U>::glob_match(const T* sbegin, int slen,
+                                const U* pbegin, int plen) {
+    const T* send = sbegin + slen;
+    const U* pend = pbegin + plen;
+
+    // quick common-case check for suffix matches
+    while (pbegin < pend && sbegin < send
+           && pend[-1] != '*' && pend[-1] != '?' && pend[-1] != ']'
+           && (pbegin + 1 == pend || pend[-2] != '\\'))
+        if (pend[-1] == send[-1])
+            --pend, --send;
+        else
+            return false;
+
+    std::vector<const U*> state, nextstate;
+    state.push_back(pbegin);
+
+    for (const T* s = sbegin; s != send && state.size(); ++s) {
+        nextstate.clear();
+        for (const U** pp = state.data(); pp != state.data() + state.size(); ++pp)
+            if (*pp != pend) {
+              reswitch:
+                switch (**pp) {
+                  case '?':
+                    nextstate.push_back(*pp + 1);
+                    break;
+                  case '*':
+                    if (*pp + 1 == pend)
+                        return true;
+                    if (nextstate.empty() || nextstate.back() != *pp)
+                        nextstate.push_back(*pp);
+                    ++*pp;
+                    goto reswitch;
+                  case '\\':
+                    if (*pp + 1 != pend)
+                        ++*pp;
+                    goto normal_char;
+                  case '[': {
+                      const U *ec = *pp + 1;
+                      bool negated;
+                      if (ec != pend && *ec == '^') {
+                          negated = true;
+                          ++ec;
+                      } else
+                          negated = false;
+                      if (ec == pend)
+                          goto normal_char;
+
+                      bool found = false;
+                      do {
+                          if (*++ec == *s)
+                              found = true;
+                      } while (ec != pend && *ec != ']');
+                      if (ec == pend)
+                          goto normal_char;
+
+                      if (found == !negated)
+                          nextstate.push_back(ec + 1);
+                      break;
+                  }
+                  normal_char:
+                  default:
+                    if (**pp == *s)
+                        nextstate.push_back(*pp + 1);
+                    break;
+                }
+            }
+        state.swap(nextstate);
+    }
+
+    for (const U** pp = state.data(); pp != state.data() + state.size(); ++pp) {
+        while (*pp != pend && **pp == '*')
+            ++*pp;
+        if (*pp == pend)
+            return true;
+    }
+    return false;
+}
+
+//  TODO: these still use char
+template <typename T, typename U>
+template <typename V>
+inline typename V::substring_type String_generic_templated<T,U>::ltrim(const V &str) {
     const char *b = str.begin(), *e = str.end();
     while (b != e && isspace((unsigned char) b[0]))
         ++b;
     return str.fast_substring(b, e);
 }
 
-template <typename T>
-inline typename T::substring_type String_generic::rtrim(const T &str) {
+template <typename T, typename U>
+template <typename V>
+inline typename V::substring_type String_generic_templated<T,U>::rtrim(const V &str) {
     const char *b = str.begin(), *e = str.end();
     while (b != e && isspace((unsigned char) e[-1]))
         --e;
     return str.fast_substring(b, e);
 }
 
-template <typename T>
-inline typename T::substring_type String_generic::trim(const T &str) {
+template <typename T, typename U>
+template <typename V>
+inline typename V::substring_type String_generic_templated<T,U>::trim(const V &str) {
     const char *b = str.begin(), *e = str.end();
     while (b != e && isspace((unsigned char) e[-1]))
         --e;

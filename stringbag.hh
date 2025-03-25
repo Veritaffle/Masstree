@@ -110,10 +110,10 @@ class stringbag {
 
     /** @brief Return the string at position @a p.
         @pre @a p >= 0 && @a p < bag width */
-    lcdf::Str operator[](int p) const {
-        info_type info = info_[p];
-        return lcdf::Str(s_ + info.pos, info.len);
-    }
+    // lcdf::atomic_Str operator[](int p) const {
+    //     info_type info = info_[p];
+    //     return lcdf::Str(s_ + info.pos, info.len);
+    // }
     /** @brief Return the string at position @a p.
         @pre @a p >= 0 && @a p < bag width */
     lcdf::Str get(int p) const {
@@ -131,15 +131,24 @@ class stringbag {
     bool assign(int p, const char *s, int len) {
         unsigned pos, mylen = info_[p].len;
         if (mylen >= (unsigned) len)
+            //  string currently at p is already at least as long as new string
+            //  we can put the new string in the same place
             pos = info_[p].pos;
         else if (size_ + (unsigned) std::max(len, slice_type::size)
                    <= capacity()) {
+            //  size_ marks beginning of open space
+            //  need a space that's at least big enough for a string_slice with slice_type uintptr_t
+            //  and at least big enough for the length of the new string
             pos = size_;
             size_ += len;
         } else
             return false;
         memcpy(s_ + pos, s, len);
         info_[p] = info_type(pos, len);
+
+        debug_fprintf(stderr, "START_STRINGBAG_PRINT\n");
+        print(15, stderr, "[stringbag]", 4);
+
         return true;
     }
     /** @override */
@@ -149,12 +158,12 @@ class stringbag {
 
     /** @brief Print a representation of the stringbag to @a f. */
     void print(int width, FILE *f, const char *prefix, int indent) {
-        fprintf(f, "%s%*s%p (%d:)%d:%d...\n", prefix, indent, "",
+        fprintf(f, "%s%*s%p (%d:)%d:%lu...\n", prefix, indent, "",
                 this, (int) overhead(width), size_, capacity());
         for (int i = 0; i < width; ++i)
             if (info_[i].len)
                 fprintf(f, "%s%*s  #%x %u:%u %.*s\n", prefix, indent, "",
-                        i, info_[i].pos, info_[i].len, std::min(info_[i].len, 40U), s_ + info_[i].pos);
+                        i, info_[i].pos, info_[i].len, std::min(info_[i].len, static_cast<offset_type>(40)), s_ + info_[i].pos);
     }
 
   private:

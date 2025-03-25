@@ -317,6 +317,7 @@ class leaf : public node_base<P> {
         if (P::need_phantom_epoch) {
             phantom_epoch_[0] = phantom_epoch;
         }
+        // debug_fprintf(stderr, "leaf::width: %d\n", width);
     }
 
     static leaf<P>* make(int ksufsize, phantom_epoch_type phantom_epoch, threadinfo& ti) {
@@ -467,14 +468,14 @@ class leaf : public node_base<P> {
     bool ksuf_external() const {
         return ksuf_;
     }
-    Str ksuf_storage(int p) const {
-        if (ksuf_)
-            return ksuf_->get(p);
-        else if (extrasize64_ > 0)
-            return iksuf_[0].get(p);
-        else
-            return Str();
-    }
+    // Str ksuf_storage(int p) const {
+    //     if (ksuf_)
+    //         return ksuf_->get(p);
+    //     else if (extrasize64_ > 0)
+    //         return iksuf_[0].get(p);
+    //     else
+    //         return Str();
+    // }
 
     bool deleted_layer() const {
         return modstate_ == modstate_deleted_layer;
