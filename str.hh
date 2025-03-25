@@ -20,41 +20,41 @@
 #include <stdio.h>
 namespace lcdf {
 
-struct char_Str : public String_base<char_Str> {
-    typedef char_Str substring_type;
-    typedef char_Str argument_type;
+struct Str : public String_base<Str> {
+    typedef Str substring_type;
+    typedef Str argument_type;
 
     const char *s;
     int len;
 
-    char_Str()
+    Str()
         : s(0), len(0) {
     }
     template <typename T>
-    char_Str(const String_base<T>& x)
+    Str(const String_base<T>& x)
         : s(x.data()), len(x.length()) {
     }
-    char_Str(const char* s_)
+    Str(const char* s_)
         : s(s_), len(strlen(s_)) {
     }
-    char_Str(const char* s_, int len_)
+    Str(const char* s_, int len_)
         : s(s_), len(len_) {
     }
-    char_Str(const unsigned char* s_, int len_)
+    Str(const unsigned char* s_, int len_)
         : s(reinterpret_cast<const char*>(s_)), len(len_) {
     }
-    char_Str(const char *first, const char *last)
+    Str(const char *first, const char *last)
         : s(first), len(last - first) {
         precondition(first <= last);
     }
-    char_Str(const unsigned char *first, const unsigned char *last)
+    Str(const unsigned char *first, const unsigned char *last)
         : s(reinterpret_cast<const char*>(first)), len(last - first) {
         precondition(first <= last);
     }
-    char_Str(const std::string& str)
+    Str(const std::string& str)
         : s(str.data()), len(str.length()) {
     }
-    char_Str(const uninitialized_type &unused) {
+    Str(const uninitialized_type &unused) {
         (void) unused;
     }
 
@@ -88,37 +88,37 @@ struct char_Str : public String_base<char_Str> {
         return const_cast<char*>(s);
     }
 
-    char_Str prefix(int lenx) const {
-        return char_Str(s, lenx < len ? lenx : len);
+    Str prefix(int lenx) const {
+        return Str(s, lenx < len ? lenx : len);
     }
-    char_Str substring(const char *first, const char *last) const {
+    Str substring(const char *first, const char *last) const {
         if (first <= last && first >= s && last <= s + len)
-            return char_Str(first, last);
+            return Str(first, last);
         else
-            return char_Str();
+            return Str();
     }
-    char_Str substring(const unsigned char *first, const unsigned char *last) const {
+    Str substring(const unsigned char *first, const unsigned char *last) const {
         const unsigned char *u = reinterpret_cast<const unsigned char*>(s);
         if (first <= last && first >= u && last <= u + len)
-            return char_Str(first, last);
+            return Str(first, last);
         else
-            return char_Str();
+            return Str();
     }
-    char_Str fast_substring(const char *first, const char *last) const {
+    Str fast_substring(const char *first, const char *last) const {
         assert(begin() <= first && first <= last && last <= end());
-        return char_Str(first, last);
+        return Str(first, last);
     }
-    char_Str fast_substring(const unsigned char *first, const unsigned char *last) const {
+    Str fast_substring(const unsigned char *first, const unsigned char *last) const {
         assert(ubegin() <= first && first <= last && last <= uend());
-        return char_Str(first, last);
+        return Str(first, last);
     }
-    char_Str ltrim() const {
+    Str ltrim() const {
         return String_generic::ltrim(*this);
     }
-    char_Str rtrim() const {
+    Str rtrim() const {
         return String_generic::rtrim(*this);
     }
-    char_Str trim() const {
+    Str trim() const {
         return String_generic::trim(*this);
     }
 
@@ -130,12 +130,12 @@ struct char_Str : public String_base<char_Str> {
         return p == len && p != 0 ? x : -1;
     }
 
-    static char_Str snprintf(char *buf, size_t size, const char *fmt, ...) {
+    static Str snprintf(char *buf, size_t size, const char *fmt, ...) {
         va_list val;
         va_start(val, fmt);
         int n = vsnprintf(buf, size, fmt, val);
         va_end(val);
-        return char_Str(buf, n);
+        return Str(buf, n);
     }
 };
 
@@ -157,156 +157,6 @@ struct inline_string : public String_base<inline_string> {
         return sizeof(inline_string) + len;
     }
 };
-
-
-
-
-
-struct atomic_Str : public String_base_templated<atomic_Str, relaxed_atomic<char>> {
-    // typedef atomic_Str substring_type;
-    // typedef atomic_Str argument_type;
-
-    const relaxed_atomic<char> *s;
-    int len;
-
-    atomic_Str()
-        : s(0), len(0) {
-    }
-    // Str(const String_base<T>& x)
-    //     : s(x.data()), len(x.length()) {
-    // }
-    // Str(const char* s_)
-    //     : s(s_), len(strlen(s_)) {
-    // }
-    // Str(const char* s_, int len_)
-    //     : s(s_), len(len_) {
-    // }
-    // Str(const unsigned char* s_, int len_)
-    //     : s(reinterpret_cast<const char*>(s_)), len(len_) {
-    // }
-    // Str(const char *first, const char *last)
-    //     : s(first), len(last - first) {
-    //     precondition(first <= last);
-    // }
-    // Str(const unsigned char *first, const unsigned char *last)
-    //     : s(reinterpret_cast<const char*>(first)), len(last - first) {
-    //     precondition(first <= last);
-    // }
-    // Str(const std::string& str)
-    //     : s(str.data()), len(str.length()) {
-    // }
-    // Str(const uninitialized_type &unused) {
-    //     (void) unused;
-    // }
-
-    atomic_Str(const relaxed_atomic<char>* s_, int len_)
-        : s(s_), len(len_) {
-    }
-    atomic_Str(const relaxed_atomic<unsigned char>* s_, int len_)
-        : s(reinterpret_cast<const relaxed_atomic<char>*>(s_)), len(len_) {
-    }
-    atomic_Str(const relaxed_atomic<char> *first, const relaxed_atomic<char> *last)
-        : s(first), len(last - first) {
-        precondition(first <= last);
-    }
-    atomic_Str(const relaxed_atomic<unsigned char> *first, const relaxed_atomic<unsigned char> *last)
-        : s(reinterpret_cast<const relaxed_atomic<char>*>(first)), len(last - first) {
-        precondition(first <= last);
-    }
-
-    void assign() {
-        s = 0;
-        len = 0;
-    }
-    // template <typename T>
-    // void assign(const String_base<T> &x) {
-    //     s = x.data();
-    //     len = x.length();
-    // }
-    // void assign(const char *s_) {
-    //     s = s_;
-    //     len = strlen(s_);
-    // }
-    // void assign(const char *s_, int len_) {
-    //     s = s_;
-    //     len = len_;
-    // }
-    void assign(relaxed_atomic<char>* s_, int len_) {
-        s = s_;
-        len = len_;
-    }
-
-    const relaxed_atomic<char> *data() const {
-        return s;
-    }
-    int length() const {
-        return len;
-    }
-    relaxed_atomic<char>* mutable_data() {
-        return const_cast<relaxed_atomic<char>*>(s);
-    }
-
-    atomic_Str prefix(int lenx) const {
-        return atomic_Str(s, lenx < len ? lenx : len);
-    }
-    atomic_Str substring(const relaxed_atomic<char> *first, const relaxed_atomic<char> *last) const {
-        if (first <= last && first >= s && last <= s + len)
-            return atomic_Str(first, last);
-        else
-            return atomic_Str();
-    }
-    atomic_Str substring(const relaxed_atomic<unsigned char> *first, const relaxed_atomic<unsigned char> *last) const {
-        const relaxed_atomic<unsigned char> *u = reinterpret_cast<const relaxed_atomic<unsigned char>*>(s);
-        if (first <= last && first >= u && last <= u + len)
-            return atomic_Str(first, last);
-        else
-            return atomic_Str();
-    }
-    // atomic_Str fast_substring(const relaxed_atomic<char> *first, const relaxed_atomic<char> *last) const {
-    //     assert(begin() <= first && first <= last && last <= end());
-    //     return atomic_Str(first, last);
-    // }
-    // atomic_Str fast_substring(const unsigned char *first, const unsigned char *last) const {
-    //     assert(ubegin() <= first && first <= last && last <= uend());
-    //     return atomic_Str(first, last);
-    // }
-    // Str ltrim() const {
-    //     return String_generic::ltrim(*this);
-    // }
-    // Str rtrim() const {
-    //     return String_generic::rtrim(*this);
-    // }
-    // Str trim() const {
-    //     return String_generic::trim(*this);
-    // }
-
-    long to_i() const {         // XXX does not handle negative
-        long x = 0;
-        int p;
-        for (p = 0; p < len && s[p] >= '0' && s[p] <= '9'; ++p)
-            x = (x * 10) + s[p] - '0';
-        return p == len && p != 0 ? x : -1;
-    }
-
-    // static Str snprintf(char *buf, size_t size, const char *fmt, ...) {
-    //     va_list val;
-    //     va_start(val, fmt);
-    //     int n = vsnprintf(buf, size, fmt, val);
-    //     va_end(val);
-    //     return Str(buf, n);
-    // }
-};
-
-
-struct Str : public String_base_templated<Str, char> {
-
-}
-
-
-
-
-
-
 
 } // namespace lcdf
 
