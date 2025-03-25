@@ -38,6 +38,30 @@ struct make_unsigned_like<relaxed_atomic<T>> {
 template <typename T>
 using make_unsigned_like_t = typename make_unsigned_like<T>::type;
 
+template<typename T, typename U>
+int maybe_atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
+    static_assert(sizeof(T) == 1, "T not one byte");
+    static_assert(sizeof(U) == 1, "U not one byte");
+    
+    if constexpr ((std::is_same_v<T, relaxed_atomic<char>> ||
+                   std::is_same_v<U, relaxed_atomic<char>>)) {
+        // debug_fprintf(stdout, "maybe_atomic_memcmp: atomic side\n");
+        for (unsigned i = 0; i < num; ++i) {
+            unsigned char ca = static_cast<unsigned char>(ptr1[i]);
+            unsigned char cb = static_cast<unsigned char>(ptr2[i]);
+            if (ptr1[i] != ptr2[i])
+                return ca - cb;
+        }
+
+        return 0;
+    }
+    else
+        return memcmp(ptr1, ptr2, num);
+}
+
+//  TODO: maybe_atomic_memcpy
+
+
 
 
 class StringAccum;
@@ -60,7 +84,7 @@ class String_generic_templated : public String_generic_templated_common {
                         && s <= out_of_memory_data + out_of_memory_length);
     }
     static bool equals(const T* a, int a_len, const U* b, int b_len) {
-        return a_len == b_len && memcmp(a, b, a_len) == 0;
+        return a_len == b_len && maybe_atomic_memcmp(a, b, a_len) == 0;
     }
     static int compare(const T* a, int a_len, const U* b, int b_len);
     static inline int compare(const make_unsigned_like_t<T>* a, int a_len,
@@ -75,7 +99,7 @@ class String_generic_templated : public String_generic_templated_common {
                                reinterpret_cast<const U*>(b), b_len);
     }
     static bool starts_with(const T *a, int a_len, const U *b, int b_len) {
-        return a_len >= b_len && memcmp(a, b, b_len) == 0;
+        return a_len >= b_len && maybe_atomic_memcmp(a, b, b_len) == 0;
     }
     static int find_left(const T *s, int len, int start, U x);
     static int find_left(const T *s, int len, int start, const U *x, int x_len);
@@ -90,7 +114,7 @@ class String_generic_templated : public String_generic_templated_common {
         return hashcode(first, last - first);
     }
     static long to_i(const T* first, const T* last);
-    //  TODO: not templated
+    //  TODO: not templated yet
     static char upper_hex_nibble(int n) {
         return n + (n > 9 ? 'A' - 10 : '0');
     }
@@ -98,17 +122,17 @@ class String_generic_templated : public String_generic_templated_common {
 
 using String_generic = String_generic_templated<>;
 
-template <typename T>
-class String_base {
+template <typename T, typename C = char>
+class String_base_templated {
   public:
     typedef T type;
-    typedef const char* const_iterator;
+    typedef const C* const_iterator;
     typedef const_iterator iterator;
-    typedef const unsigned char* const_unsigned_iterator;
+    typedef const make_unsigned_like_t<C>* const_unsigned_iterator;
     typedef const_unsigned_iterator unsigned_iterator;
-    typedef int (String_base<T>::*unspecified_bool_type)() const;
+    typedef int (String_base_templated<T,C>::*unspecified_bool_type)() const;
 
-    const char* data() const {
+    const C* data() const {
         return static_cast<const T*>(this)->data();
     }
     int length() const {
@@ -155,7 +179,7 @@ class String_base {
     }
     /** @brief Test if the string is nonempty. */
     operator unspecified_bool_type() const {
-        return length() ? &String_base<T>::length : 0;
+        return length() ? &String_base_templated<T,C>::length : 0;
     }
     /** @brief Test if the string is empty. */
     bool operator!() const {
@@ -167,7 +191,7 @@ class String_base {
     }
     /** @brief Test if the string is an out-of-memory string. */
     bool out_of_memory() const {
-        return String_generic::out_of_memory(data());
+        return String_generic_templated<C>::out_of_memory(data());
     }
     /** @brief Return the @a i th character in the string.
 
@@ -195,19 +219,23 @@ class String_base {
     const char& back() const {
         return data()[length() - 1];
     }
+
+
+    //  TODO: remove duplicates here
+
     /** @brief Test if this string is equal to the C string @a cstr. */
     bool equals(const char *cstr) const {
-        return String_generic::equals(data(), length(), cstr, strlen(cstr));
+        return String_generic_templated<C,char>::equals(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Test if this string is equal to the first @a len characters
         of @a s. */
     bool equals(const char *s, int len) const {
-        return String_generic::equals(data(), length(), s, len);
+        return String_generic_templated<C,char>::equals(data(), length(), s, len);
     }
     /** @brief Test if this string is equal to @a x. */
-    template <typename TT>
-    bool equals(const String_base<TT>& x) const {
-        return String_generic::equals(data(), length(), x.data(), x.length());
+    template <typename TT, typename CC>
+    bool equals(const String_base_templated<TT,CC>& x) const {
+        return String_generic_templated<C,CC>::equals(data(), length(), x.data(), x.length());
     }
     /** @brief Compare this string with the C string @a cstr.
 
@@ -216,36 +244,36 @@ class String_base {
         string is greater than @a cstr. Lexicographic order treats
         characters as unsigned. */
     int compare(const char* cstr) const {
-        return String_generic::compare(data(), length(), cstr, strlen(cstr));
+        return String_generic_templated<C,char>::compare(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Compare this string with the first @a len characters of @a
         s. */
     int compare(const char* s, int len) const {
-        return String_generic::compare(data(), length(), s, len);
+        return String_generic_templated<C,char>::compare(data(), length(), s, len);
     }
     /** @brief Compare this string with @a x. */
-    template <typename TT>
-    int compare(const String_base<TT>& x) const {
-        return String_generic::compare(data(), length(), x.data(), x.length());
+    template <typename TT, typename CC>
+    int compare(const String_base_templated<TT,CC>& x) const {
+        return  String_generic_templated<C,CC>::compare(data(), length(), x.data(), x.length());
     }
     /** @brief Compare strings @a a and @a b. */
-    template <typename TT, typename UU>
-    static int compare(const String_base<TT>& a, const String_base<UU>& b) {
-        return String_generic::compare(a.data(), a.length(), b.data(), b.length());
+    template <typename TT, typename UU, typename CC, typename DD>
+    static int compare(const String_base_templated<TT,CC>& a, const String_base_templated<UU,DD>& b) {
+        return  String_generic_templated<CC,DD>::compare(a.data(), a.length(), b.data(), b.length());
     }
     /** @brief Compare strings @a a and @a b. */
-    template <typename UU>
-    static int compare(const char* a, const String_base<UU> &b) {
-        return String_generic::compare(a, strlen(a), b.data(), b.length());
+    template <typename UU, typename DD>
+    static int compare(const char* a, const String_base_templated<UU,DD> &b) {
+        return  String_generic_templated<char,DD>::compare(a, strlen(a), b.data(), b.length());
     }
     /** @brief Compare strings @a a and @a b. */
-    template <typename TT>
-    static int compare(const String_base<TT>& a, const char* b) {
-        return String_generic::compare(a.data(), a.length(), b, strlen(b));
+    template <typename TT, typename CC>
+    static int compare(const String_base_templated<TT,CC>& a, const char* b) {
+        return  String_generic_templated<CC,char>::compare(a.data(), a.length(), b, strlen(b));
     }
     /** @brief Compare strings @a a and @a b. */
     static int compare(const char* a, const char* b) {
-        return String_generic::compare(a, strlen(a), b, strlen(b));
+        return String_generic_templated<char,char>::compare(a, strlen(a), b, strlen(b));
     }
     /** @brief Compare this string with the C string @a cstr using natural order.
 
@@ -257,62 +285,62 @@ class String_base {
         cstr in natural order, and positive if this string is greater
         than @a cstr in natural order. */
     int natural_compare(const char *cstr) const {
-        return String_generic::natural_compare(data(), length(), cstr, strlen(cstr));
+        return String_generic_templated<C,char>::natural_compare(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Compare this string with the first @a len characters of @a
         s using natural order. */
     int natural_compare(const char *s, int len) const {
-        return String_generic::natural_compare(data(), length(), s, len);
+        return String_generic_templated<C,char>::natural_compare(data(), length(), s, len);
     }
     /** @brief Compare this string with @a x using natural order. */
-    template <typename TT>
-    int natural_compare(const String_base<TT> &x) const {
-        return String_generic::natural_compare(data(), length(), x.data(), x.length());
+    template <typename TT, typename CC>
+    int natural_compare(const String_base_templated<TT,CC> &x) const {
+        return String_generic_templated<C,CC>::natural_compare(data(), length(), x.data(), x.length());
     }
     /** @brief Compare strings @a a and @a b using natural order. */
-    template <typename TT, typename UU>
-    static int natural_compare(const String_base<TT> &a, const String_base<UU> &b) {
-        return String_generic::natural_compare(a.data(), a.length(), b.data(), b.length());
+    template <typename TT, typename UU, typename CC, typename DD>
+    static int natural_compare(const String_base_templated<TT,CC> &a, const String_base_templated<UU,DD> &b) {
+        return String_generic_templated<CC,DD>::natural_compare(a.data(), a.length(), b.data(), b.length());
     }
     /** @brief Compare strings @a a and @a b using natural order. */
-    template <typename UU>
-    static int natural_compare(const char* a, const String_base<UU> &b) {
-        return String_generic::natural_compare(a, strlen(a), b.data(), b.length());
+    template <typename UU, typename DD>
+    static int natural_compare(const char* a, const String_base_templated<UU,DD> &b) {
+        return String_generic_templated<char,DD>::natural_compare(a, strlen(a), b.data(), b.length());
     }
     /** @brief Compare strings @a a and @a b using natural order. */
-    template <typename TT>
-    static int natural_compare(const String_base<TT>& a, const char* b) {
-        return String_generic::natural_compare(a.data(), a.length(), b, strlen(b));
+    template <typename TT, typename CC>
+    static int natural_compare(const String_base_templated<TT,CC>& a, const char* b) {
+        return String_generic_templated<CC,char>::natural_compare(a.data(), a.length(), b, strlen(b));
     }
     /** @brief Compare strings @a a and @a b using natural order. */
     static int natural_compare(const char* a, const char* b) {
-        return String_generic::natural_compare(a, strlen(a), b, strlen(b));
+        return String_generic_templated<char,char>::natural_compare(a, strlen(a), b, strlen(b));
     }
     /** @brief Compare strings @a a and @a b using natural order. */
     static int natural_compare(const std::string& a, const std::string& b) {
-        return String_generic::natural_compare(a.data(), a.length(), b.data(), b.length());
+        return String_generic_templated<char,char>::natural_compare(a.data(), a.length(), b.data(), b.length());
     }
     /** @brief Comparator function object for natural string comparison. */
     class natural_comparator {
       public:
         template <typename TT, typename UU>
         bool operator()(const TT& a, const UU& b) const {
-            return String_base<T>::natural_compare(a, b) < 0;
+            return String_base_templated<T,C>::natural_compare(a, b) < 0;
         }
     };
     /** @brief Test if this string begins with the C string @a cstr. */
     bool starts_with(const char *cstr) const {
-        return String_generic::starts_with(data(), length(), cstr, strlen(cstr));
+        return String_generic_templated<C,char>::starts_with(data(), length(), cstr, strlen(cstr));
     }
     /** @brief Test if this string begins with the first @a len characters
         of @a s. */
     bool starts_with(const char *s, int len) const {
-        return String_generic::starts_with(data(), length(), s, len);
+        return String_generic_templated<C,char>::starts_with(data(), length(), s, len);
     }
     /** @brief Test if this string begins with @a x. */
-    template <typename TT>
-    bool starts_with(const String_base<TT> &x) const {
-        return String_generic::starts_with(data(), length(), x.data(), x.length());
+    template <typename TT, typename CC>
+    bool starts_with(const String_base_templated<TT,CC> &x) const {
+        return String_generic_templated<C,CC>::starts_with(data(), length(), x.data(), x.length());
     }
     /** @brief Search for a character in this string.
 
@@ -320,22 +348,22 @@ class String_base {
         index @a start and working up to the end of the string. Return -1 if
         the character is not found. */
     int find_left(char x, int start = 0) const {
-        return String_generic::find_left(data(), length(), start, x);
+        return String_generic_templated<C,char>::find_left(data(), length(), start, x);
     }
     /** @brief Search for the C string @a cstr as a substring in this string.
 
         Return the index of the leftmost occurrence of @a cstr, starting at
         index @a start. Return -1 if the substring is not found. */
     int find_left(const char *cstr, int start = 0) const {
-        return String_generic::find_left(data(), length(), start, cstr, strlen(cstr));
+        return String_generic_templated<C,char>::find_left(data(), length(), start, cstr, strlen(cstr));
     }
     /** @brief Search for @a x as a substring in this string.
 
         Return the index of the leftmost occurrence of @a x, starting at
         index @a start. Return -1 if the substring is not found. */
-    template <typename TT>
-    int find_left(const String_base<TT> &x, int start = 0) const {
-        return String_generic::find_left(data(), length(), start, x.data(), x.length());
+    template <typename TT, typename CC>
+    int find_left(const String_base_templated<TT,CC> &x, int start = 0) const {
+        return String_generic_templated<C,CC>::find_left(data(), length(), start, x.data(), x.length());
     }
     /** @brief Search backwards for a character in this string.
 
@@ -343,7 +371,7 @@ class String_base {
         index @a start and working up to the end of the string. Return -1 if
         the character is not found. */
     int find_right(char c, int start = INT_MAX) const {
-        return String_generic::find_right(data(), length(), start, c);
+        return String_generic_templated<C,char>::find_right(data(), length(), start, c);
     }
     /** @brief Search backwards for the C string @a cstr as a substring in
         this string.
@@ -351,15 +379,15 @@ class String_base {
         Return the index of the rightmost occurrence of @a cstr, starting
         at index @a start. Return -1 if the substring is not found. */
     int find_right(const char *cstr, int start = INT_MAX) const {
-        return String_generic::find_right(data(), length(), start, cstr, strlen(cstr));
+        return String_generic_templated<C,char>::find_right(data(), length(), start, cstr, strlen(cstr));
     }
     /** @brief Search backwards for @a x as a substring in this string.
 
         Return the index of the rightmost occurrence of @a x, starting at
         index @a start. Return -1 if the substring is not found. */
-    template <typename TT>
-    int find_right(const String_base<TT> &x, int start = INT_MAX) const {
-        return String_generic::find_right(data(), length(), start, x.data(), x.length());
+    template <typename TT, typename CC>
+    int find_right(const String_base_templated<TT,CC> &x, int start = INT_MAX) const {
+        return String_generic_templated<C,CC>::find_right(data(), length(), start, x.data(), x.length());
     }
     /** @brief Test if this string matches the glob @a pattern.
 
@@ -367,12 +395,12 @@ class String_base {
         arbitrary character), [] (character classes, possibly negated), and
         \\ (escaping). */
     bool glob_match(const char* pattern) const {
-        return String_generic::glob_match(data(), length(), pattern, strlen(pattern));
+        return String_generic_templated<C,char>::glob_match(data(), length(), pattern, strlen(pattern));
     }
     /** @overload */
-    template <typename TT>
-    bool glob_match(const String_base<TT>& pattern) const {
-        return String_generic::glob_match(data(), length(), pattern.data(), pattern.length());
+    template <typename TT, typename CC>
+    bool glob_match(const String_base_templated<TT,CC>& pattern) const {
+        return String_generic_templated<C,CC>::glob_match(data(), length(), pattern.data(), pattern.length());
     }
     /** @brief Return a 32-bit hash function of the characters in [@a first, @a last).
 
@@ -383,17 +411,17 @@ class String_base {
         @invariant If last1 - first1 == last2 - first2 and memcmp(first1,
         first2, last1 - first1) == 0, then hashcode(first1, last1) ==
         hashcode(first2, last2). */
-    static hashcode_t hashcode(const char *first, const char *last) {
-        return String_generic::hashcode(first, last);
+    static hashcode_t hashcode(const C *first, const C *last) {
+        return String_generic_templated<C,C>::hashcode(first, last);
     }
     /** @brief Return a 32-bit hash function of the characters in this string. */
     hashcode_t hashcode() const {
-        return String_generic::hashcode(data(), length());
+        return String_generic_templated<C,C>::hashcode(data(), length());
     }
 
     /** @brief Return the integer value of this string. */
     long to_i() const {
-        return String_generic::to_i(begin(), end());
+        return String_generic_templated<C,C>::to_i(begin(), end());
     }
 
     template <typename E>
@@ -413,101 +441,104 @@ class String_base {
     }
 
   protected:
-    String_base() = default;
+    String_base_templated() = default;
 };
 
-template <typename T, typename U>
-inline bool operator==(const String_base<T> &a, const String_base<U> &b) {
+template <typename T>
+using String_base = String_base_templated<T, char>;
+
+template <typename T, typename U, typename C, typename D>
+inline bool operator==(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return a.equals(b);
 }
 
-template <typename T>
-inline bool operator==(const String_base<T> &a, const std::string &b) {
+template <typename T, typename C>
+inline bool operator==(const String_base_templated<T,C> &a, const std::string &b) {
     return a.equals(b.data(), b.length());
 }
 
-template <typename T>
-inline bool operator==(const std::string &a, const String_base<T> &b) {
+template <typename T, typename C>
+inline bool operator==(const std::string &a, const String_base_templated<T,C> &b) {
     return b.equals(a.data(), a.length());
 }
 
-template <typename T>
-inline bool operator==(const String_base<T> &a, const char *b) {
+template <typename T, typename C>
+inline bool operator==(const String_base_templated<T,C> &a, const char *b) {
     return a.equals(b, strlen(b));
 }
 
-template <typename T>
-inline bool operator==(const char *a, const String_base<T> &b) {
+template <typename T, typename C>
+inline bool operator==(const char *a, const String_base_templated<T,C> &b) {
     return b.equals(a, strlen(a));
 }
 
-template <typename T, typename U>
-inline bool operator!=(const String_base<T> &a, const String_base<U> &b) {
+template <typename T, typename U, typename C, typename D>
+inline bool operator!=(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return !(a == b);
 }
 
-template <typename T>
-inline bool operator!=(const String_base<T> &a, const std::string &b) {
+template <typename T, typename C>
+inline bool operator!=(const String_base_templated<T,C> &a, const std::string &b) {
     return !(a == b);
 }
 
-template <typename T>
-inline bool operator!=(const std::string &a, const String_base<T> &b) {
+template <typename T, typename C>
+inline bool operator!=(const std::string &a, const String_base_templated<T,C> &b) {
     return !(a == b);
 }
 
-template <typename T>
-inline bool operator!=(const String_base<T> &a, const char *b) {
+template <typename T, typename C>
+inline bool operator!=(const String_base_templated<T,C> &a, const char *b) {
     return !(a == b);
 }
 
-template <typename T>
-inline bool operator!=(const char *a, const String_base<T> &b) {
+template <typename T, typename C>
+inline bool operator!=(const char *a, const String_base_templated<T,C> &b) {
     return !(a == b);
 }
 
-template <typename T, typename U>
-inline bool operator<(const String_base<T> &a, const String_base<U> &b) {
+template <typename T, typename U, typename C, typename D>
+inline bool operator<(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return a.compare(b) < 0;
 }
 
-template <typename T, typename U>
-inline bool operator<=(const String_base<T> &a, const String_base<U> &b) {
+template <typename T, typename U, typename C, typename D>
+inline bool operator<=(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return a.compare(b) <= 0;
 }
 
-template <typename T, typename U>
-inline bool operator>=(const String_base<T> &a, const String_base<U> &b) {
+template <typename T, typename U, typename C, typename D>
+inline bool operator>=(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return a.compare(b) >= 0;
 }
 
-template <typename T, typename U>
-inline bool operator>(const String_base<T> &a, const String_base<U> &b) {
+template <typename T, typename U, typename C, typename D>
+inline bool operator>(const String_base_templated<T,C> &a, const String_base_templated<U,D> &b) {
     return a.compare(b) > 0;
 }
 
-template <typename T>
-inline std::ostream &operator<<(std::ostream &f, const String_base<T> &str) {
+template <typename T, typename C>
+inline std::ostream &operator<<(std::ostream &f, const String_base_templated<T,C> &str) {
     return f.write(str.data(), str.length());
 }
 
-template <typename T>
-inline hashcode_t hashcode(const String_base<T>& x) {
+template <typename T, typename C>
+inline hashcode_t hashcode(const String_base_templated<T,C>& x) {
     return String_generic::hashcode(x.data(), x.length());
 }
 
 // boost's spelling
-template <typename T>
-inline size_t hash_value(const String_base<T>& x) {
+template <typename T, typename C>
+inline size_t hash_value(const String_base_templated<T,C>& x) {
     return String_generic::hashcode(x.data(), x.length());
 }
 
 template <typename T, typename U>
 int String_generic_templated<T, U>::compare(const T* a, int a_len, const U* b, int b_len)
 {
-    if (a != b) {
+    if (reinterpret_cast<uintptr_t>(a) != reinterpret_cast<uintptr_t>(b)) {
         int len = a_len < b_len ? a_len : b_len;
-        int cmp = memcmp(a, b, len);
+        int cmp = maybe_atomic_memcmp(a, b, len);
         if (cmp != 0)
             return cmp;
     }
@@ -519,7 +550,7 @@ int String_generic_templated<T, U>::natural_compare(const T* a, int a_len,
                                     const U* b, int b_len) {
     const T* ae = a + a_len;
     const U* be = b + b_len;
-    const char* aperiod = 0;
+    const T* aperiod = 0;
     bool aperiod_negative = false;
     int raw_compare = 0;
 
@@ -538,7 +569,8 @@ int String_generic_templated<T, U>::natural_compare(const T* a, int a_len,
                 negative = true;
 
             // skip initial '0's, but remember any difference in length
-            const char *ia = a, *ib = b;
+            const T *ia = a;
+            const U *ib = b;
             while (a < ae && *a == '0')
                 ++a;
             while (b < be && *b == '0')
@@ -732,7 +764,7 @@ int String_generic_templated<T,U>::find_left(const T *s, int len, int start,
         return start <= len ? start : -1;
     int max_pos = len - x_len;
     for (int i = start; i <= max_pos; ++i)
-        if (memcmp(s + i, x, x_len) == 0)
+        if (maybe_atomic_memcmp(s + i, x, x_len) == 0)
             return i;
     return -1;
 }
@@ -758,7 +790,7 @@ int String_generic_templated<T,U>::find_right(const T *s, int len, int start,
     if (x_len == 0)
         return start >= 0 ? start : -1;
     for (int i = start; i >= 0; --i)
-        if (memcmp(s + i, x, x_len) == 0)
+        if (maybe_atomic_memcmp(s + i, x, x_len) == 0)
             return i;
     return -1;
 }
@@ -899,8 +931,9 @@ inline typename V::substring_type String_generic_templated<T,U>::trim(const V &s
 # define LCDF_MAKE_STRING_HASH(type)
 #endif
 
-template <typename T> template <typename E>
-typename String_base<T>::const_iterator String_base<T>::encode_json_partial(E& enc) const {
+template <typename T, typename C>
+template <typename E>
+typename String_base_templated<T,C>::const_iterator String_base_templated<T,C>::encode_json_partial(E& enc) const {
     const char *last = this->begin(), *end = this->end();
     for (const char *s = last; s != end; ++s) {
         int c = (unsigned char) *s;
@@ -955,14 +988,16 @@ typename String_base<T>::const_iterator String_base<T>::encode_json_partial(E& e
     return last;
 }
 
-template <typename T> template <typename E>
-inline void String_base<T>::encode_json(E& enc) const {
+template <typename T, typename C>
+template <typename E>
+inline void String_base_templated<T,C>::encode_json(E& enc) const {
     const char* last = encode_json_partial(enc);
     enc.append(last, end());
 }
 
-template <typename T> template <typename E>
-void String_base<T>::encode_base64(E& enc, bool pad) const {
+template <typename T, typename C>
+template <typename E>
+void String_base_templated<T,C>::encode_base64(E& enc, bool pad) const {
     char* out = enc.reserve(((length() + 2) * 4) / 3);
     const unsigned char* s = this->ubegin(), *end = this->uend();
     for (; end - s >= 3; s += 3) {
@@ -988,8 +1023,9 @@ void String_base<T>::encode_base64(E& enc, bool pad) const {
     enc.set_end(out);
 }
 
-template <typename T> template <typename E>
-bool String_base<T>::decode_base64(E& enc) const {
+template <typename T, typename C>
+template <typename E>
+bool String_base_templated<T,C>::decode_base64(E& enc) const {
     char* out = enc.reserve((length() * 3) / 4 + 1);
     const unsigned char* s = this->ubegin(), *end = this->uend();
     while (end > s && end[-1] == '=')
@@ -1020,8 +1056,9 @@ bool String_base<T>::decode_base64(E& enc) const {
     return true;
 }
 
-template <typename T> template <typename E>
-void String_base<T>::encode_uri_component(E& enc) const {
+template <typename T, typename C>
+template <typename E>
+void String_base_templated<T,C>::encode_uri_component(E& enc) const {
     const char *last = this->begin(), *end = this->end();
     enc.reserve(end - last);
     for (const char *s = last; s != end; ++s) {

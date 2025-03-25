@@ -1,5 +1,3 @@
-#if false
-
 /* Masstree
  * Eddie Kohler, Yandong Mao, Robert Morris
  * Copyright (c) 2012-2013 President and Fellows of Harvard College
@@ -22,7 +20,7 @@
 #include <stdio.h>
 namespace lcdf {
 
-struct atomic_Str : public String_base<atomic_Str, relaxed_atomic<char>> {
+struct atomic_Str : public String_base_templated<atomic_Str, relaxed_atomic<char>> {
     // typedef atomic_Str substring_type;
     // typedef atomic_Str argument_type;
 
@@ -32,7 +30,6 @@ struct atomic_Str : public String_base<atomic_Str, relaxed_atomic<char>> {
     atomic_Str()
         : s(0), len(0) {
     }
-    template <typename T>
     // Str(const String_base<T>& x)
     //     : s(x.data()), len(x.length()) {
     // }
@@ -160,6 +157,5 @@ struct atomic_Str : public String_base<atomic_Str, relaxed_atomic<char>> {
 
 } // namespace lcdf
 
-#endif
 
 #endif
