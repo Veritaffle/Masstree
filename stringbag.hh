@@ -111,12 +111,17 @@ class stringbag {
         assert(capacity >= firstpos && capacity <= max_size());
         size_ = firstpos;
         capacity_ = capacity - 1;
-        for (int i = 0; i != width; ++i) {
-            info_[i].assign();
-        }
+
+        //  
+
+        // for (int i = 0; i != width; ++i) {
+        //     info_[i].assign();
+        // }
+
+        (void) new(s_ + empty_size()) info_type[width];
 
         // setup atomic string data
-        (void) new(s_ + size_) relaxed_atomic<char>[capacity - size_];
+        (void) new(s_ + size_) relaxed_atomic<char>[(capacity - size_) / sizeof(relaxed_atomic<char>)];
     }
 
     /** @brief Return the capacity used to construct this bag. */
