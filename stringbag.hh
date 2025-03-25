@@ -18,6 +18,15 @@
 #include "compiler.hh"
 #include "string_slice.hh"
 
+
+
+
+
+
+#if false
+//  TODO: bring back old one
+#else
+
 /** @brief String collection used for Masstree key suffixes.
 
     A stringbag is a compact collection of up to W strings, where W is a
@@ -97,6 +106,9 @@ class stringbag {
         for (int i = 0; i != width; ++i) {
             info_[i] = info_type();
         }
+
+        // setup atomic string data
+        (void) new(s_ + size_) relaxed_atomic<char>[capacity - size_];
     }
 
     /** @brief Return the capacity used to construct this bag. */
@@ -116,9 +128,9 @@ class stringbag {
     // }
     /** @brief Return the string at position @a p.
         @pre @a p >= 0 && @a p < bag width */
-    lcdf::Str get(int p) const {
+    lcdf::atomic_Str get(int p) const {
         info_type info = info_[p];
-        return lcdf::Str(s_ + info.pos, info.len);
+        return lcdf::atomic_Str(reinterpret_cast<const relaxed_atomic<char>*>(s_ + info.pos), info.len);
     }
 
     /** @brief Assign the string at position @a p to @a s.
@@ -128,7 +140,8 @@ class stringbag {
         @return true if the assignment succeeded, false if it failed
            (because the stringbag is out of capacity)
         @pre @a p >= 0 && @a p < bag width */
-    bool assign(int p, const char *s, int len) {
+    template<typename C>
+    bool assign(int p, const C *s, int len) {
         unsigned pos, mylen = info_[p].len;
         if (mylen >= (unsigned) len)
             //  string currently at p is already at least as long as new string
@@ -143,16 +156,19 @@ class stringbag {
             size_ += len;
         } else
             return false;
-        memcpy(s_ + pos, s, len);
+        atomic_memcpy(reinterpret_cast<relaxed_atomic<char>*>(s_ + pos), s, len);
         info_[p] = info_type(pos, len);
 
-        debug_fprintf(stderr, "START_STRINGBAG_PRINT\n");
-        print(15, stderr, "[stringbag]", 4);
+        // debug_fprintf(stderr, "START_STRINGBAG_PRINT\n");
+        // print(15, stderr, "[stringbag]", 4);
 
         return true;
     }
     /** @override */
     bool assign(int p, lcdf::Str s) {
+        return assign(p, s.s, s.len);
+    }
+    bool assign(int p, lcdf::atomic_Str s) {
         return assign(p, s.s, s.len);
     }
 
@@ -176,5 +192,7 @@ class stringbag {
         char s_[1];
     };
 };
+
+#endif
 
 #endif

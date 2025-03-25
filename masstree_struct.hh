@@ -413,12 +413,12 @@ class leaf : public node_base<P> {
     bool has_ksuf(int p) const {
         return keylenx_has_ksuf(keylenx_[p]);
     }
-    Str ksuf(int p, int keylenx) const {
+    atomic_Str ksuf(int p, int keylenx) const {
         (void) keylenx;
         masstree_precondition(keylenx_has_ksuf(keylenx));
         return ksuf_ ? ksuf_->get(p) : iksuf_[0].get(p);
     }
-    Str ksuf(int p) const {
+    atomic_Str ksuf(int p) const {
         return ksuf(p, keylenx_[p]);
     }
     bool ksuf_equals(int p, const key_type& ka) const {
@@ -438,7 +438,7 @@ class leaf : public node_base<P> {
             return 1;
         if (keylenx == layer_keylenx)
             return -(int) sizeof(ikey_type);
-        Str s = ksuf(p, keylenx);
+        atomic_Str s = ksuf(p, keylenx);
         return s.len == ka.suffix().len
             && string_slice<uintptr_t>::equals_sloppy(s.s, ka.suffix().s, s.len);
     }
@@ -551,7 +551,8 @@ class leaf : public node_base<P> {
         ikey0_[p] = ka.ikey();
         keylenx_[p] = layer_keylenx;
     }
-    void assign_ksuf(int p, Str s, bool initializing, threadinfo& ti);
+    template <typename S>
+    void assign_ksuf(int p, S s, bool initializing, threadinfo& ti);
 
     inline ikey_type ikey_after_insert(const permuter_type& perm, int i,
                                        const tcursor<P>* cursor) const;
@@ -759,7 +760,8 @@ leaf<P>* leaf<P>::advance_to_key(const key_type& ka, nodeversion_type& v,
     positions [0,p) are ready: keysuffixes in that range are copied. In either
     case, the key at position p is NOT copied; it is assigned to @a s. */
 template <typename P>
-void leaf<P>::assign_ksuf(int p, Str s, bool initializing, threadinfo& ti) {
+template <typename S>
+void leaf<P>::assign_ksuf(int p, S s, bool initializing, threadinfo& ti) {
     // debug_fprintf(stderr, "leaf::assign_ksuf(): %p %d\n", ksuf_, s.len);
     if ((ksuf_ && ksuf_->assign(p, s))
         || (extrasize64_ > 0 && iksuf_[0].assign(p, s))) {
