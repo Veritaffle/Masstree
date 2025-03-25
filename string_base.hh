@@ -38,29 +38,59 @@ struct make_unsigned_like<relaxed_atomic<T>> {
 template <typename T>
 using make_unsigned_like_t = typename make_unsigned_like<T>::type;
 
+
+
+template<typename T, typename U>
+int atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
+    static_assert(sizeof(T) == 1, "T not one byte");
+    static_assert(sizeof(U) == 1, "U not one byte");
+    static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
+                   std::is_same_v<U, relaxed_atomic<char>>))
+    
+    for (unsigned i = 0; i < num; ++i) {
+        unsigned char ca = static_cast<unsigned char>(ptr1[i]);
+        unsigned char cb = static_cast<unsigned char>(ptr2[i]);
+        if (ptr1[i] != ptr2[i])
+            return ca - cb;
+    }
+    return 0;
+}
+
 template<typename T, typename U>
 int maybe_atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
     static_assert(sizeof(T) == 1, "T not one byte");
     static_assert(sizeof(U) == 1, "U not one byte");
-    
+
     if constexpr ((std::is_same_v<T, relaxed_atomic<char>> ||
                    std::is_same_v<U, relaxed_atomic<char>>)) {
-        // debug_fprintf(stdout, "maybe_atomic_memcmp: atomic side\n");
-        for (unsigned i = 0; i < num; ++i) {
-            unsigned char ca = static_cast<unsigned char>(ptr1[i]);
-            unsigned char cb = static_cast<unsigned char>(ptr2[i]);
-            if (ptr1[i] != ptr2[i])
-                return ca - cb;
-        }
-
-        return 0;
+        return atomic_memcmp(ptr1, ptr2, nuum);
     }
     else
         return memcmp(ptr1, ptr2, num);
 }
 
-//  TODO: maybe_atomic_memcpy
+template<typename T, typename U>
+int atomic_memcpy(T *dest, const U* src, size_t count) {
+    static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
+                   std::is_same_v<U, relaxed_atomic<char>>))
+    for (unsigned i = 0; i < count; ++i) {
+        d[i] = s[i];
+    }
+    return dest;
+}
 
+template<typename T, typename U>
+int maybe_atomic_memcpy(T *dest, const U* src, size_t count) {
+    static_assert(sizeof(T) == 1, "T not one byte");
+    static_assert(sizeof(U) == 1, "U not one byte");
+    
+    if constexpr ((std::is_same_v<T, relaxed_atomic<char>> ||
+                   std::is_same_v<U, relaxed_atomic<char>>)) {
+        return atomic_memcpy(dest, src, count);
+    }
+    else
+        return memcpy(dest, src, count);
+}
 
 
 
