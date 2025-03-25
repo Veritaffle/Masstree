@@ -159,6 +159,8 @@ public:
     relaxed_atomic(relaxed_atomic<T>&&) = delete;
     // relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
     relaxed_atomic<T>& operator=(relaxed_atomic<T>&&) = delete;
+    operator T*() = delete;
+    operator const T*() const = delete;
 private:
     std::atomic<T> _v;
 };
