@@ -214,6 +214,10 @@ struct kvtest_client {
         quick_istr key(ikey, 8), expected(iexpected);
         get_check(key.string(), expected.string());
     }
+    void get_check_key10(long ikey, long iexpected) {
+        quick_istr key(ikey, 10), expected(iexpected);
+        get_check(key.string(), expected.string());
+    }
     void get_col_check(Str key, int col, Str value);
     void get_col_check(long ikey, int col, long ivalue) {
         quick_istr key(ikey), value(ivalue);
@@ -250,6 +254,10 @@ struct kvtest_client {
     }
     void put_key8(long ikey, long ivalue) {
         quick_istr key(ikey, 8), value(ivalue);
+        put(key.string(), value.string());
+    }
+    void put_key10(long ikey, long ivalue) {
+        quick_istr key(ikey, 10), value(ivalue);
         put(key.string(), value.string());
     }
     void put_key16(long ikey, long ivalue) {
@@ -605,6 +613,9 @@ MAKE_TESTRUNNER(rscan1q80, kvtest_rscan1(client, 0.8));
 MAKE_TESTRUNNER(splitremove1, kvtest_splitremove1(client));
 MAKE_TESTRUNNER(url, kvtest_url(client));
 MAKE_TESTRUNNER(conflictscan1, kvtest_conflictscan1(client));
+MAKE_TESTRUNNER(r1, kvtest_r1_seed(client, kvtest_first_seed + client.id()));
+MAKE_TESTRUNNER(w1, kvtest_w1_seed(client, kvtest_first_seed + client.id()));
+MAKE_TESTRUNNER(r1nolim, kvtest_r1nolim_seed(client, kvtest_first_seed + client.id()));
 
 
 enum {
