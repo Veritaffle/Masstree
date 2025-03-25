@@ -469,6 +469,18 @@ AS_CASE([$ac_relax_fence_pause],
     [*], [AC_MSG_ERROR([Invalid relax_fence_pause: $ac_relax_fence_pause.])]
 )
 
+AC_ARG_WITH([stringbag_impl],
+    AS_HELP_STRING([--with-stringbag_impl=VALUE], [set implementation for stringbag]),
+    [ac_stringbag_impl=$withval],
+    [ac_stringbag_impl=original]
+)
+AS_CASE([$ac_stringbag_impl],
+    [original], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_ORIGINAL], [1], [Define if stringbag should use the original, non-atomic implementation.])],
+    [atomic], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_ATOMIC], [1], [Define if stringbag should use the atomic implementation.])],
+    [no_reassign], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_NO_REASSIGN], [1], [Define if stringbag should use the no-reassignment imlpementation.])],
+    [*], [AC_MSG_ERROR([Invalid stringbag_impl: $ac_stringbag_impl.])]
+)
+
 
 # AC_ARG_ENABLE([atomic_nodeversion],
 #     [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])

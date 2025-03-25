@@ -2,11 +2,12 @@
 
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
-VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
-VARIANTS=("atomicnv_schedyield")
+# VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
+VARIANTS=("atomicnv_pause")
+# VARIANTS=("beta")
 
 # CONFIGS=("debug" "release")
-CONFIGS=("release")
+# CONFIGS=("release")
 CONFIGS=("debug")
 
 #	TODO: produce asm
@@ -20,11 +21,17 @@ LDFLAGS_RELEASE=""
 
 CONFIGFLAGS_BASE=""
 CONFIGFLAGS_BETA="--with-nodeversion=handrolled "
+
 CONFIGFLAGS_ATOMICNV_SIGNAL="--with-nodeversion=atomicallfences "
 CONFIGFLAGS_ATOMICNV_THREAD="--with-nodeversion=atomicallfences --enable-atomic_thread_fence_default "
 CONFIGFLAGS_ATOMICNV_SCHEDYIELD="--with-nodeversion=atomic --with-relax_fence_pause=schedyield "
 CONFIGFLAGS_ATOMICNV_PAUSE="--with-nodeversion=atomic --with-relax_fence_pause=pause "
 CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic --with-relax_fence_pause=none "
+
+CONFIGFLAGS_STRINGBAG_BASE=$CONFIGFLAGS_ATOMICNV_PAUSE
+CONFIGFLAGS_STRINGBAG_ATOMIC=$CONFIGFLAGS_STRINGBAG_BASE + "--with-stringbag_impl=atomic "
+CONFIGFLAGS_STRINGBAG_NOREASSIGN=$CONFIGFLAGS_STRINGBAG_BASE + "--with-stringbag_impl=no_reassign "
+
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
 CONFIGFLAGS_RELEASE="--with-build_config=release --disable-assertions --disable-preconditions --disable-invariants "
@@ -74,6 +81,12 @@ for variant in "${VARIANTS[@]}"; do
 				;;
 			"atomicnv")
 				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICNV
+				;;
+			"stringbag_atomic")
+				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_ATOMIC
+				;;
+			"stringbag_noreassign")
+				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_NOREASSIGN
 				;;
 		esac
 
