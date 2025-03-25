@@ -31,7 +31,7 @@ int atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
     static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
                    std::is_same_v<U, relaxed_atomic<char>>));
     
-    debug_fprintf(stdout, "atomic_memcmp()\n");
+    // debug_fprintf(stdout, "atomic_memcmp()\n");
     for (unsigned i = 0; i < num; ++i) {
         unsigned char ca = static_cast<unsigned char>(ptr1[i]);
         unsigned char cb = static_cast<unsigned char>(ptr2[i]);
@@ -58,7 +58,7 @@ template<typename T, typename U>
 void *atomic_memcpy(T *dest, const U* src, size_t count) {
     static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
                    std::is_same_v<U, relaxed_atomic<char>>));
-    debug_fprintf(stdout, "atomic_memcpy()\n");
+    // debug_fprintf(stdout, "atomic_memcpy()\n");
     for (unsigned i = 0; i < count; ++i) {
         dest[i] = src[i];
     }

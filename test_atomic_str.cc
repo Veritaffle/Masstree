@@ -1,7 +1,6 @@
 #include <cstdio>
 #include "compiler.hh"
 #include "str.hh"
-#include "atomic_str.hh"
 
 constexpr unsigned EXAMPLE_LENGTH = 4;
 
