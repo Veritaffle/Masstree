@@ -74,17 +74,17 @@ class String_generic {
     }
 };
 
-template <typename T, typename C = char>
+template <typename T>
 class String_base {
   public:
     typedef T type;
-    typedef const C* const_iterator;
+    typedef const char* const_iterator;
     typedef const_iterator iterator;
-    typedef const unsigned C* const_unsigned_iterator;
+    typedef const unsigned char* const_unsigned_iterator;
     typedef const_unsigned_iterator unsigned_iterator;
-    typedef int (String_base<T, C>::*unspecified_bool_type)() const;
+    typedef int (String_base<T>::*unspecified_bool_type)() const;
 
-    const C* data() const {
+    const char* data() const {
         return static_cast<const T*>(this)->data();
     }
     int length() const {
@@ -98,8 +98,8 @@ class String_base {
 
         Only the first length() characters are valid, and the string data
         might not be null-terminated. @sa data() */
-    const unsigned C* udata() const {
-        return reinterpret_cast<const unsigned C*>(data());
+    const unsigned char* udata() const {
+        return reinterpret_cast<const unsigned char*>(data());
     }
     /** @brief Return an iterator for the beginning of the string.
 
@@ -148,27 +148,27 @@ class String_base {
     /** @brief Return the @a i th character in the string.
 
         Does not check bounds. @sa at() */
-    const C& operator[](int i) const {
+    const char& operator[](int i) const {
         return data()[i];
     }
     /** @brief Return the @a i th character in the string.
 
         Checks bounds: an assertion will fail if @a i is less than 0 or not
         less than length(). @sa operator[] */
-    const C& at(int i) const {
+    const char& at(int i) const {
         assert(unsigned(i) < unsigned(length()));
         return data()[i];
     }
     /** @brief Return the first character in the string.
 
         Does not check bounds. Same as (*this)[0]. */
-    const C& front() const {
+    const char& front() const {
         return data()[0];
     }
     /** @brief Return the last character in the string.
 
         Does not check bounds. Same as (*this)[length() - 1]. */
-    const C& back() const {
+    const char& back() const {
         return data()[length() - 1];
     }
     /** @brief Test if this string is equal to the C string @a cstr. */
@@ -180,9 +180,6 @@ class String_base {
     bool equals(const char *s, int len) const {
         return String_generic::equals(data(), length(), s, len);
     }
-
-    //  TODO: equals for atomics
-
     /** @brief Test if this string is equal to @a x. */
     template <typename TT>
     bool equals(const String_base<TT>& x) const {
@@ -226,9 +223,6 @@ class String_base {
     static int compare(const char* a, const char* b) {
         return String_generic::compare(a, strlen(a), b, strlen(b));
     }
-
-    //  TODO: compare for atomics
-
     /** @brief Compare this string with the C string @a cstr using natural order.
 
         Natural string comparison attempts to order embedded decimal number
@@ -274,9 +268,6 @@ class String_base {
     static int natural_compare(const std::string& a, const std::string& b) {
         return String_generic::natural_compare(a.data(), a.length(), b.data(), b.length());
     }
-
-    //  TODO: natural compare for atomics
-
     /** @brief Comparator function object for natural string comparison. */
     class natural_comparator {
       public:
@@ -299,9 +290,6 @@ class String_base {
     bool starts_with(const String_base<TT> &x) const {
         return String_generic::starts_with(data(), length(), x.data(), x.length());
     }
-
-    //  TODO: starts with for atomics
-
     /** @brief Search for a character in this string.
 
         Return the index of the leftmost occurrence of @a c, starting at
@@ -325,9 +313,6 @@ class String_base {
     int find_left(const String_base<TT> &x, int start = 0) const {
         return String_generic::find_left(data(), length(), start, x.data(), x.length());
     }
-
-    //  TODO: find left for atomics
-
     /** @brief Search backwards for a character in this string.
 
         Return the index of the rightmost occurrence of @a c, starting at
@@ -357,9 +342,6 @@ class String_base {
         Glob pattern syntax allows * (any number of characters), ? (one
         arbitrary character), [] (character classes, possibly negated), and
         \\ (escaping). */
-
-    //  TODO: find_right for atomics
-
     bool glob_match(const char* pattern) const {
         return String_generic::glob_match(data(), length(), pattern, strlen(pattern));
     }
