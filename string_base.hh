@@ -22,31 +22,16 @@
 #include <limits.h>
 #include <ctype.h>
 #include <iostream>
-namespace lcdf {
 
-template <typename T>
-struct make_unsigned_like {
-    using type = std::make_unsigned_t<T>;
-};
-
-// Specialization for std::atomic<T>
-template <typename T>
-struct make_unsigned_like<relaxed_atomic<T>> {
-    using type = relaxed_atomic<std::make_unsigned_t<T>>;
-};
-
-template <typename T>
-using make_unsigned_like_t = typename make_unsigned_like<T>::type;
-
-
-
+//  TODO: not sure these should go here but fine for now
 template<typename T, typename U>
 int atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
     static_assert(sizeof(T) == 1, "T not one byte");
     static_assert(sizeof(U) == 1, "U not one byte");
     static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
-                   std::is_same_v<U, relaxed_atomic<char>>))
+                   std::is_same_v<U, relaxed_atomic<char>>));
     
+    debug_fprintf(stdout, "atomic_memcmp()\n");
     for (unsigned i = 0; i < num; ++i) {
         unsigned char ca = static_cast<unsigned char>(ptr1[i]);
         unsigned char cb = static_cast<unsigned char>(ptr2[i]);
@@ -63,24 +48,25 @@ int maybe_atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
 
     if constexpr ((std::is_same_v<T, relaxed_atomic<char>> ||
                    std::is_same_v<U, relaxed_atomic<char>>)) {
-        return atomic_memcmp(ptr1, ptr2, nuum);
+        return atomic_memcmp(ptr1, ptr2, num);
     }
     else
         return memcmp(ptr1, ptr2, num);
 }
 
 template<typename T, typename U>
-int atomic_memcpy(T *dest, const U* src, size_t count) {
+void *atomic_memcpy(T *dest, const U* src, size_t count) {
     static_assert((std::is_same_v<T, relaxed_atomic<char>> ||
-                   std::is_same_v<U, relaxed_atomic<char>>))
+                   std::is_same_v<U, relaxed_atomic<char>>));
+    debug_fprintf(stdout, "atomic_memcpy()\n");
     for (unsigned i = 0; i < count; ++i) {
-        d[i] = s[i];
+        dest[i] = src[i];
     }
     return dest;
 }
 
 template<typename T, typename U>
-int maybe_atomic_memcpy(T *dest, const U* src, size_t count) {
+void *maybe_atomic_memcpy(T *dest, const U* src, size_t count) {
     static_assert(sizeof(T) == 1, "T not one byte");
     static_assert(sizeof(U) == 1, "U not one byte");
     
@@ -91,6 +77,27 @@ int maybe_atomic_memcpy(T *dest, const U* src, size_t count) {
     else
         return memcpy(dest, src, count);
 }
+
+
+
+
+
+namespace lcdf {
+
+template <typename T>
+struct make_unsigned_like {
+    using type = std::make_unsigned_t<T>;
+};
+
+// Specialization for std::atomic<T>
+template <typename T>
+struct make_unsigned_like<relaxed_atomic<T>> {
+    using type = relaxed_atomic<std::make_unsigned_t<T>>;
+};
+
+template <typename T>
+using make_unsigned_like_t = typename make_unsigned_like<T>::type;
+
 
 
 

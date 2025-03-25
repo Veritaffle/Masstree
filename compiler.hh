@@ -128,6 +128,10 @@ public:
         return store(v);
     }
 
+    relaxed_atomic<T>& operator=(const relaxed_atomic<T>& other) {
+        return store(other.load());
+    }
+
     //  TODO: xchg
     //  TODO: val_cmpxchg
 
@@ -153,7 +157,7 @@ public:
 
     relaxed_atomic(const relaxed_atomic<T>&) = delete;
     relaxed_atomic(relaxed_atomic<T>&&) = delete;
-    relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
+    // relaxed_atomic<T>& operator=(const relaxed_atomic<T>&) = delete;
     relaxed_atomic<T>& operator=(relaxed_atomic<T>&&) = delete;
 private:
     std::atomic<T> _v;

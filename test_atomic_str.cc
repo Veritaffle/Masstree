@@ -24,8 +24,8 @@ void StringTest(T a, U b) {
 
 int main(void) {
 	
-	const char *CharString1 = "0123";
-	const char *CharString2 = "0167";
+	char CharString1[5] = "0123";
+	char CharString2[5] = "0167";
 	
 	relaxed_atomic<char> AtomicString1[EXAMPLE_LENGTH];
 	AtomicString1[0] = '0';
@@ -49,6 +49,15 @@ int main(void) {
 	StringTest(s1, as1);
 	StringTest(as1, s2);
 	StringTest(as1, as2);
+
+	maybe_atomic_memcpy(CharString1, CharString2, 4);
+	assert(s1.equals(s2));
+	maybe_atomic_memcpy(CharString1, AtomicString1, 4);
+	assert(s1.equals(as1));
+	maybe_atomic_memcpy(AtomicString1, CharString2, 4);
+	assert(as1.equals(s2));
+	maybe_atomic_memcpy(AtomicString1, AtomicString2, 4);
+	assert(as1.equals(as2));
 
 	fprintf(stdout, "All tests passed!\n");
 
