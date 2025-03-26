@@ -210,6 +210,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
             atomic_Str atomic_suffix = n_->ksuf(kx.p);
             atomic_memcpy(suffixbuf, atomic_suffix.s, atomic_suffix.len);
             suffix.s = suffixbuf;
+            suffix.len = atomic_suffix.len;
 #endif
         }
     }
