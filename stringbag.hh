@@ -18,10 +18,26 @@
 #include "compiler.hh"
 #include "string_slice.hh"
 
+/** @brief String collection used for Masstree key suffixes.
 
+    A stringbag is a compact collection of up to W strings, where W is a
+    parameter called the <em>bag width</em>. These strings are stored
+    in contiguously allocated memory.
 
+    Stringbag component strings support
+    string_slice<uintptr_t>::equals_sloppy() without memory errors.
 
+    The template parameter T is the offset type. This type determines the
+    maximum supported capacity of a stringbag. Smaller types have lower
+    overhead, but support smaller bags.
 
+    Stringbags favor compactness over usability. The bag width W is an
+    important parameter, but you can't recover W from the stringbag itself;
+    you'll need to store that externally. Stringbags cannot be allocated
+    conventionally. You must manage stringbag memory yourself:
+    allocate an array of characters for the stringbag, then use placement
+    new to construct the stringbag on that memory. Stringbag has a
+    trivial destructor. */
 
 #if defined(STRINGBAG_IMPL_ORIGINAL)
 
@@ -157,26 +173,6 @@ class stringbag {
 
 #elif defined(STRINGBAG_IMPL_ATOMIC)
 
-/** @brief String collection used for Masstree key suffixes.
-
-    A stringbag is a compact collection of up to W strings, where W is a
-    parameter called the <em>bag width</em>. These strings are stored
-    in contiguously allocated memory.
-
-    Stringbag component strings support
-    string_slice<uintptr_t>::equals_sloppy() without memory errors.
-
-    The template parameter T is the offset type. This type determines the
-    maximum supported capacity of a stringbag. Smaller types have lower
-    overhead, but support smaller bags.
-
-    Stringbags favor compactness over usability. The bag width W is an
-    important parameter, but you can't recover W from the stringbag itself;
-    you'll need to store that externally. Stringbags cannot be allocated
-    conventionally. You must manage stringbag memory yourself:
-    allocate an array of characters for the stringbag, then use placement
-    new to construct the stringbag on that memory. Stringbag has a
-    trivial destructor. */
 template <typename T>
 class stringbag {
  public:
@@ -237,20 +233,20 @@ class stringbag {
         that space using placement new. @a capacity must be no bigger than
         the allocated space. */
     stringbag(int width, size_t capacity) {
+        // debug_fprintf(stderr, "stringbag()\n");
         size_t firstpos = overhead(width);
         assert(capacity >= firstpos && capacity <= max_size());
         size_ = firstpos;
         capacity_ = capacity - 1;
 
-        //  
-
         // for (int i = 0; i != width; ++i) {
         //     info_[i].assign();
         // }
 
+        //  set up atomics
+        static_assert(sizeof(relaxed_atomic<char>) == 1);
+        static_assert(alignof(relaxed_atomic<char>) == 1);
         (void) new(s_ + empty_size()) info_type[width];
-
-        // setup atomic string data
         (void) new(s_ + size_) relaxed_atomic<char>[(capacity - size_) / sizeof(relaxed_atomic<char>)];
     }
 
@@ -286,6 +282,7 @@ class stringbag {
         @pre @a p >= 0 && @a p < bag width */
     template<typename C>
     bool assign(int p, const C *s, int len) {
+        // debug_fprintf(stderr, "stringbag::assign() called\n");
         unsigned pos, mylen = info_[p].len;
         if (mylen >= (unsigned) len)
             //  string currently at p is already at least as long as new string
@@ -300,6 +297,7 @@ class stringbag {
             size_ = size_ + len;
         } else
             return false;
+        // debug_fprintf(stderr, "stringbag::assign() hit memcpy\n");
         atomic_memcpy(reinterpret_cast<relaxed_atomic<char>*>(s_ + pos), s, len);
         info_[p].assign(pos, len);
 

@@ -775,6 +775,7 @@ class String_generic_templated : public String_generic_templated_common {
     static bool starts_with(const T *a, int a_len, const U *b, int b_len) {
         return a_len >= b_len && maybe_atomic_memcmp(a, b, b_len) == 0;
     }
+    //  TODO: pass-by-value for U here is kinda cringe
     static int find_left(const T *s, int len, int start, U x);
     static int find_left(const T *s, int len, int start, const U *x, int x_len);
     static int find_right(const T *s, int len, int start, U x);
