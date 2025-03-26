@@ -422,7 +422,7 @@ class leaf : public node_base<P> {
     Str ksuf(int p) const {
         return ksuf(p, keylenx_[p]);
     }
-#elif defined(STRINGBAG_IMPL_ATOMIC)
+#elif defined(STRINGBAG_IMPL_ATOMIC) || defined(STRINGBAG_IMPL_ATOMICREF)
     atomic_Str ksuf(int p, int keylenx) const {
         (void) keylenx;
         masstree_precondition(keylenx_has_ksuf(keylenx));
@@ -451,7 +451,7 @@ class leaf : public node_base<P> {
             return -(int) sizeof(ikey_type);
 #if defined(STRINGBAG_IMPL_ORIGINAL)
         Str s = ksuf(p, keylenx);
-#elif defined(STRINGBAG_IMPL_ATOMIC)
+#elif defined(STRINGBAG_IMPL_ATOMIC) || defined(STRINGBAG_IMPL_ATOMICREF)
         atomic_Str s = ksuf(p, keylenx);
 #endif
         return s.len == ka.suffix().len

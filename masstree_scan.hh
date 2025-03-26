@@ -206,7 +206,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
             suffix = n_->ksuf(kx.p);
             memcpy(suffixbuf, suffix.s, suffix.len);
             suffix.s = suffixbuf;
-#elif defined(STRINGBAG_IMPL_ATOMIC)
+#elif defined(STRINGBAG_IMPL_ATOMIC) || defined(STRINGBAG_IMPL_ATOMICREF)
             atomic_Str atomic_suffix = n_->ksuf(kx.p);
             atomic_memcpy(suffixbuf, atomic_suffix.s, atomic_suffix.len);
             suffix.s = suffixbuf;

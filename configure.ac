@@ -477,7 +477,7 @@ AC_ARG_WITH([stringbag_impl],
 AS_CASE([$ac_stringbag_impl],
     [original], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_ORIGINAL], [1], [Define if stringbag should use the original, non-atomic implementation.])],
     [atomic], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_ATOMIC], [1], [Define if stringbag should use the atomic implementation.])],
-    [no_reassign], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_NO_REASSIGN], [1], [Define if stringbag should use the no-reassignment imlpementation.])],
+    [atomicref], [AC_DEFINE_UNQUOTED([STRINGBAG_IMPL_ATOMICREF], [1], [Define if stringbag should use the atomic_ref imlpementation.])],
     [*], [AC_MSG_ERROR([Invalid stringbag_impl: $ac_stringbag_impl.])]
 )
 

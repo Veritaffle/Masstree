@@ -3,12 +3,12 @@
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
 # VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
-VARIANTS=("atomicnv_pause" "stringbag_atomic")
+VARIANTS=("stringbag_atomicref")
 # VARIANTS=("beta")
 
 # CONFIGS=("debug" "release")
 # CONFIGS=("release")
-CONFIGS=("release")
+CONFIGS=("debug" "release")
 
 #	TODO: produce asm
 CXXFLAGS_BASE="-g -W -Wall -std=c++20 -pthread "
@@ -30,7 +30,7 @@ CONFIGFLAGS_ATOMICNV="--with-nodeversion=atomic --with-relax_fence_pause=none "
 
 CONFIGFLAGS_STRINGBAG_BASE=$CONFIGFLAGS_ATOMICNV_PAUSE
 CONFIGFLAGS_STRINGBAG_ATOMIC=$CONFIGFLAGS_STRINGBAG_BASE"--with-stringbag_impl=atomic "
-CONFIGFLAGS_STRINGBAG_NOREASSIGN=$CONFIGFLAGS_STRINGBAG_BASE" --with-stringbag_impl=no_reassign "
+CONFIGFLAGS_STRINGBAG_ATOMICREF=$CONFIGFLAGS_STRINGBAG_BASE" --with-stringbag_impl=atomicref "
 
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
@@ -85,8 +85,8 @@ for variant in "${VARIANTS[@]}"; do
 			"stringbag_atomic")
 				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_ATOMIC
 				;;
-			"stringbag_noreassign")
-				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_NOREASSIGN
+			"stringbag_atomicref")
+				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_ATOMICREF
 				;;
 		esac
 

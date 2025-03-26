@@ -1391,7 +1391,7 @@ String String::encode_uri_component() const {
 
 } // namespace lcdf
 
-#elif defined(STRINGBAG_IMPL_ATOMIC)
+#elif defined(STRINGBAG_IMPL_ATOMIC) || defined(STRINGBAG_IMPL_ATOMICREF)
 
 namespace lcdf {
 
@@ -2355,9 +2355,5 @@ String String::encode_uri_component() const {
 }
 
 } // namespace lcdf
-
-#elif defined(STRINGBAG_IMPL_NOREASSIGN)
-
-//  TODO
 
 #endif

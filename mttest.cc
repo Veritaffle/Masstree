@@ -1086,8 +1086,8 @@ Try 'mttest --help' for options.\n");
 #if defined(STRINGBAG_IMPL_ATOMIC)
     debug_fprintf(stderr, "STRINGBAG_IMPL_ATOMIC\n");
 #endif
-#if defined(STRINGBAG_IMPL_NOREASSIGN)
-    debug_fprintf(stderr, "STRINGBAG_IMPL_NOREASSIGN\n");
+#if defined(STRINGBAG_IMPL_ATOMICREF)
+    debug_fprintf(stderr, "STRINGBAG_IMPL_ATOMICREF\n");
 #endif
 
     if (treetypes.empty())

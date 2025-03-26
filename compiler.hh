@@ -171,6 +171,128 @@ inline T fetch_and_add(relaxed_atomic<T> obj, T addend, memory_order mo = MO_REL
 }
 
 
+template <typename T>
+struct relaxed_atomic_ref {
+public:
+    relaxed_atomic_ref(T& obj) :
+        _r(obj) {
+    }
+
+    T load(memory_order mo = MO_RELAXED) const {
+        return _r.load(mo);
+    }
+    void store(T v, memory_order mo = MO_RELAXED) {
+        _r.store(v, mo);
+    }
+
+    operator T() const noexcept {
+        return load();
+    }
+
+    void operator=(const T v) {
+        return store(v);
+    }
+
+    // relaxed_atomic_ref<T>& operator=(const relaxed_atomic<T>& other) = delete;
+        // return store(other.load());
+    // }
+
+    bool is_lock_free() const {
+        return _r.is_lock_free();
+    }
+
+    relaxed_atomic_ref(const relaxed_atomic_ref<T>&) = delete;
+    relaxed_atomic_ref(relaxed_atomic_ref<T>&&) = delete;
+    relaxed_atomic_ref<T>& operator=(const relaxed_atomic_ref<T>&) = delete;
+    relaxed_atomic_ref<T>& operator=(relaxed_atomic_ref<T>&&) = delete;
+    operator T*() = delete;
+    operator const T*() const = delete;
+
+private:
+    std::atomic_ref<T> _r;
+};
+
+template <typename T>
+struct ptr_using_relaxed_atomic_ref {
+public:
+    ptr_using_relaxed_atomic_ref(T *base) :
+        base_(base){
+    }
+    ptr_using_relaxed_atomic_ref(const ptr_using_relaxed_atomic_ref<T>& other) :
+        base_(other.base_){
+    }
+
+
+    //  TODO: cringe and wrong
+    // operator T() const noexcept {
+    //     return relaxed_atomic_ref<T>(base).load();
+    // }
+
+    
+
+    ptr_using_relaxed_atomic_ref& operator=(T *base) {
+        base_ = base;
+        return *this;
+    }
+
+    // ptr_using_relaxed_atomic_ref<T>& operator=(const ptr_using_relaxed_atomic_ref<T>& other) {
+    //     base_ = other.base_;
+    //     return this;
+    // }
+
+    relaxed_atomic_ref<T> operator*() const {
+        return relaxed_atomic_ref<T>(*base_);
+    }
+    // T operator*() const {
+    //     return relaxed_atomic_ref<T>(*base_).load();
+    // }
+    
+    relaxed_atomic_ref<T> operator[](size_t index) const {
+        return relaxed_atomic_ref<T>(*(base_ + index));
+    }
+    // T operator[](size_t index) const {
+    //     return relaxed_atomic_ref<T>(*(base_ + index));
+    // }
+
+    friend bool operator< (const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return lhs.base_ < rhs.base_; }
+    friend bool operator==(const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return lhs.base_ == rhs.base_; }
+    friend bool operator> (const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return rhs < lhs; }
+    friend bool operator<=(const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs > rhs); }
+    friend bool operator>=(const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs < rhs); }
+    friend bool operator!=(const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs == rhs); }
+
+    friend bool operator< (const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return lhs.base_ < rhs; }
+    friend bool operator==(const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return lhs.base_ == rhs; }
+    friend bool operator> (const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return rhs < lhs; }
+    friend bool operator<=(const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return !(lhs > rhs); }
+    friend bool operator>=(const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return !(lhs < rhs); }
+    friend bool operator!=(const ptr_using_relaxed_atomic_ref<T>& lhs, const void *rhs) { return !(lhs == rhs); }
+    
+    friend bool operator< (const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return lhs < rhs.base_; }
+    friend bool operator==(const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return lhs == rhs.base_; }
+    friend bool operator<=(const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs > rhs); }
+    friend bool operator>=(const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs < rhs); }
+    friend bool operator!=(const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return !(lhs == rhs ); }
+    friend bool operator> (const void *&lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return rhs < lhs; }
+
+    friend ptr_using_relaxed_atomic_ref<T> operator+ (const ptr_using_relaxed_atomic_ref<T>& lhs, const int& addend) { return ptr_using_relaxed_atomic_ref<T>(lhs.base_ + addend); }
+    friend ptr_using_relaxed_atomic_ref<T> operator- (const ptr_using_relaxed_atomic_ref<T>& lhs, const int& addend) { return lhs.base_ + (-addend); }
+    friend int operator- (const ptr_using_relaxed_atomic_ref<T>& lhs, const ptr_using_relaxed_atomic_ref<T>& rhs) { return lhs.base_ - rhs.base_; }
+
+
+
+    // friend relaxed_atomic_ref<T> operator+<>(const relaxed_atomic_ref<T>&a, int displacement);
+    // friend relaxed_atomic_ref<T> operator-<>(const relaxed_atomic_ref<T>&a, int displacement);
+    // friend relaxed_atomic_ref<T> operator-<>(const relaxed_atomic_ref<T>&a, const relaxed_atomic_ref<T>&b);
+
+private:
+    // NB: base should ONLY be read from via relaxed_atomic_ref<T>
+    T *base_;
+
+    // relaxed_atomic_ref<T> ar_; 
+        //  atomic_ref::address not available until C++26
+        //  see https://en.cppreference.com/w/cpp/compiler_support/26
+};
 
 
 

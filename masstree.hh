@@ -21,7 +21,7 @@
 
 namespace Masstree {
 using lcdf::Str;
-#if defined(STRINGBAG_IMPL_ATOMIC)
+#if defined(STRINGBAG_IMPL_ATOMIC) || defined(STRINGBAG_IMPL_ATOMICREF)
 using lcdf::atomic_Str;
 #endif
 using lcdf::String;
