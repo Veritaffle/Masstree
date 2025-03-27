@@ -107,7 +107,7 @@ class internode : public node_base<P> {
     typedef typename key_bound<width, P::bound_method>::type bound_type;
     typedef typename P::threadinfo_type threadinfo;
 
-    acqrel_atomic<uint8_t> nkeys_;
+    relaxed_atomic<uint8_t> nkeys_;
     uint32_t height_;
     relaxed_atomic<ikey_type> ikey0_[width];                            //  uint64_t per struct nodeparams
     acqrel_atomic<node_base<P>*> child_[width + 1];                    //  pointer to node_base (!)
@@ -227,118 +227,6 @@ class internode : public node_base<P> {
 
     template <typename PP> friend class tcursor;
 };
-
-/*
-template <typename P>
-class leafvalue {
-  public:
-    typedef typename P::value_type value_type;
-    typedef typename make_prefetcher<P>::type prefetcher_type;
-
-    leafvalue() {
-    }
-    leafvalue(value_type v) {
-        u_.v = v;
-    }
-    leafvalue(node_base<P>* n) {
-        u_.x = reinterpret_cast<uintptr_t>(n);
-    }
-
-    static leafvalue<P> make_empty() {
-        return leafvalue<P>(value_type());
-    }
-
-    typedef bool (leafvalue<P>::*unspecified_bool_type)() const;
-    operator unspecified_bool_type() const {
-        return u_.x ? &leafvalue<P>::empty : 0;
-    }
-    bool empty() const {
-        return !u_.x;
-    }
-
-    value_type value() const {
-        return u_.v;
-    }
-    value_type& value() {
-        return u_.v;
-    }
-
-    node_base<P>* layer() const {
-        return reinterpret_cast<node_base<P>*>(u_.x);
-    }
-
-    void prefetch(int keylenx) const {
-        if (!leaf<P>::keylenx_is_layer(keylenx))
-            prefetcher_type()(u_.v);
-        else
-            u_.n->prefetch_full();
-    }
-
-private:
-    union {
-        node_base<P>* n;
-        value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
-        uintptr_t x;
-    } u_;
-};
-*/
-
-/*
-template <typename P>
-class leafvalue {
-public:
-    typedef typename P::value_type value_type;
-    typedef typename make_prefetcher<P>::type prefetcher_type;
-
-    leafvalue() {
-    }
-    leafvalue(value_type v) :
-        u_(reinterpret_cast<uintptr_t>(v)) {
-    }
-    leafvalue(node_base<P>* n) :
-        u_(reinterpret_cast<uintptr_t>(n)) {
-    }
-
-    static leafvalue<P> make_empty() {
-        return leafvalue<P>(value_type());
-    }
-
-    typedef bool (leafvalue<P>::*unspecified_bool_type)() const;
-    operator unspecified_bool_type() const {
-        return u_.load() ? &leafvalue<P>::empty : 0;
-    }
-    bool empty() const {
-        return !u_.load();
-    }
-
-    value_type value() const {
-        return reinterpret_cast<value_type>(u_.load());
-    }
-    value_type& value() {
-        return reinterpret_cast<value_type>(u_.load());
-    }
-
-    node_base<P>* layer() const {
-        return reinterpret_cast<node_base<P>*>(u_.load());
-    }
-
-    void prefetch(int keylenx) const {
-        if (!leaf<P>::keylenx_is_layer(keylenx))
-            prefetcher_type()(reinterpret_cast<value_type>(u_));
-        else
-            reinterpret_cast<node_base<P>*>(u_.load()).n->prefetch_full();
-    }
-
-private:
-    // union {
-    //     node_base<P>* n;
-    //     value_type v;       //  value_type is a row_type* per struct default_query_table_params, so ALWAYS a pointer
-    //     uintptr_t x;
-    // } u_;
-
-    acqrel_atomic<uintptr_t> u_;
-};
-*/
 
 template <typename P>
 class leafvalue {
