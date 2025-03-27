@@ -660,6 +660,7 @@ void String_base<T>::encode_uri_component(E& enc) const {
 
 #elif defined(STRINGBAG_IMPL_ATOMIC)
 
+/*
 //  TODO: not sure these should go here but fine for now
 template<typename T, typename U>
 int atomic_memcmp(const T* ptr1, const U* ptr2, size_t num) {
@@ -700,7 +701,6 @@ void atomic_memcpy(T *dest, const U* src, size_t count) {
     for (unsigned i = 0; i < count; ++i) {
         dest[i] = src[i];
     }
-    return dest;
 }
 
 template<typename T, typename U>
@@ -716,6 +716,7 @@ void maybe_atomic_memcpy(T *dest, const U* src, size_t count) {
         memcpy(dest, src, count);
 }
 
+*/
 
 
 
@@ -1756,6 +1757,7 @@ void String_base_templated<T,C>::encode_uri_component(E& enc) const {
 
 #elif defined(STRINGBAG_IMPL_ATOMICREF)
 
+/*
 //  TODO: not sure these should go here but fine for now
 template<typename T, typename U>
 int atomic_memcmp(T ptr1, U ptr2, size_t num) {
@@ -1825,6 +1827,7 @@ void maybe_atomic_memcpy(T dest, U src, size_t count) {
         memcpy(dest, src, count);
 }
 
+*/
 
 
 
