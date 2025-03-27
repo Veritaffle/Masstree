@@ -92,7 +92,7 @@ bool tcursor<P>::find_locked(threadinfo& ti)
     kx_ = leaf<P>::bound_type::lower(ka_, *n_);
     
     if (kx_.p >= 0) {
-        leafvalue<P> lv = n_->lv_[kx_.p];
+        leafvalue<P> lv(n_->lv_[kx_.p].value());
         lv.prefetch(n_->keylenx_[kx_.p]);
         state_ = n_->ksuf_matches(kx_.p, ka_);
         if (state_ < 0 && !n_->has_changed(v) && lv.layer()->is_root()) {

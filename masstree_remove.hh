@@ -97,7 +97,7 @@ bool tcursor<P>::gc_layer(threadinfo& ti)
         }
 
         // child is an empty leaf: kill it
-        masstree_invariant(!lf->prev_ && !lf->next_.ptr);
+        masstree_invariant(!lf->prev_.load() && !lf->next_.load());
         masstree_invariant(!lf->deleted());
         masstree_invariant(!lf->deleted_layer());
         if (P::need_phantom_epoch
@@ -180,8 +180,8 @@ template <typename P>
 bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
                              Str prefix, threadinfo& ti)
 {
-    if (!leaf->prev_) {
-        if (!leaf->next_.ptr && !prefix.empty()) {
+    if (!leaf->prev_.load()) {
+        if (!leaf->next_.load() && !prefix.empty()) {
             gc_layer_rcu_callback<P>::make(root, prefix, ti);
         }
         return false;

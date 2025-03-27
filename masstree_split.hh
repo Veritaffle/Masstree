@@ -69,10 +69,10 @@ int leaf<P>::split_into(leaf<P>* nr, tcursor<P>* cursor,
     int width = perml.size();   // == this->width or this->width - 1
     int mid = this->width / 2 + 1;
     int p = cursor->kx_.i;
-    if (p == 0 && !this->prev_) {
+    if (p == 0 && !this->prev_.load()) {
         // reverse-sequential optimization
         mid = 1;
-    } else if (p == width && !this->next_.ptr) {
+    } else if (p == width && !this->next_.load()) {
         // sequential optimization
         mid = width;
     }
@@ -226,7 +226,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
             } else {
                 nn->set_parent(p);
                 // p->child_[kp] = nn;     //  This is when it becomes visible
-                p->child_[kp].store(nn, SHUTUP_TSAN_MO_RELEASE);
+                // p->child_[kp].store(nn, SHUTUP_TSAN_MO_RELEASE);
             }
             atomic_thread_release_fence();
             n->set_parent(nn);
@@ -242,9 +242,9 @@ bool tcursor<P>::make_split(threadinfo& ti)
             }
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
-                p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
+                // p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
                 p->assign(kp, xikey[sense], child);
-                p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
+                // p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
                 atomic_thread_release_fence();
                 p->nkeys_ = p->nkeys_ + 1;
             }

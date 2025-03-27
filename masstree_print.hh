@@ -74,7 +74,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
     do {
         v = *this;
         fence();
-        perm = permutation_;
+        perm = permutation_.load();
     } while (this->has_changed(v));
     int indent = 2 * depth;
     if (depth > P::print_max_indent_depth && P::print_max_indent_depth > 0)
@@ -83,12 +83,12 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
     {
         char buf[1024];
         int l = 0;
-        if (ksuf_ && extrasize64_ < -1)
-            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_ - 1, (int) ksuf_->capacity() / 64);
-        else if (ksuf_)
-            l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_->capacity() / 64);
-        else if (extrasize64_)
-            l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_);
+        if (ksuf_.load() && extrasize64_ < -1)
+            l = snprintf(buf, sizeof(buf), " [ksuf i%dx%d]", -extrasize64_.load() - 1, (int) ksuf_.load()->capacity() / 64);
+        else if (ksuf_.load())
+            l = snprintf(buf, sizeof(buf), " [ksuf x%d]", (int) ksuf_.load()->capacity() / 64);
+        else if (extrasize64_.load())
+            l = snprintf(buf, sizeof(buf), " [ksuf i%d]", extrasize64_.load());
         if (P::debug_level > 0) {
             kvtimestamp_t cts = timestamp_sub(created_at_[0], initial_timestamp);
             l += snprintf(&buf[l], sizeof(buf) - l, " @" PRIKVTSPARTS, KVTS_HIGHPART(cts), KVTS_LOWPART(cts));
@@ -100,11 +100,11 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
                 (uint64_t) v.version_value(),
                 modstate_ <= 2 ? modstates[modstate_] : "??",
                 perm.unparse().c_str(),
-                parent_.load(), prev_, next_.ptr,
+                parent_.load(), prev_.load(), next_.load(),
                 l, buf);
     }
 
-    if (v.deleted() || (perm[0] != 0 && prev_))
+    if (v.deleted() || (perm[0] != 0 && prev_.load()))
         fprintf(f, "%s%*s%s = [] #0\n", prefix, indent + 2, "", key_type(ikey_bound()).unparse().c_str());
 
     char keybuf[MASSTREE_MAXKEYLEN];
@@ -112,8 +112,8 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
     for (int idx = 0; idx < perm.size(); ++idx) {
         int p = perm[idx];
         int l = P::key_unparse_type::unparse_key(this->get_key(p), keybuf, sizeof(keybuf));
-        sprintf(xbuf, " #%x/%d", p, keylenx_[p]);
-        leafvalue_type lv = lv_[p];
+        sprintf(xbuf, " #%x/%d", p, keylenx_[p].load());
+        leafvalue_type lv(lv_[p].value());
         if (this->has_changed(v)) {
             fprintf(f, "%s%*s[NODE CHANGED]\n", prefix, indent + 2, "");
             break;

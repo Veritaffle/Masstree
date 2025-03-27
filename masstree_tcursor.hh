@@ -124,7 +124,7 @@ class tcursor {
     inline bool has_value() const {
         return kx_.p >= 0;
     }
-    inline value_type& value() const {
+    inline acqrel_atomic<value_type>& value() const {
         return n_->lv_[kx_.p].value();
     }
 

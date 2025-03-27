@@ -447,7 +447,7 @@ struct logrecord {
     void run(T& table, std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 
   private:
-    inline void apply(row_type*& value, bool found,
+    inline void apply(acqrel_atomic<row_type*>& value, bool found,
                       std::vector<lcdf::Json>& jrepo, threadinfo& ti);
 };
 
@@ -528,19 +528,19 @@ static lcdf::Json* parse_changeset(Str changeset,
     return jrepo.data() + pos;
 }
 
-inline void logrecord::apply(row_type*& value, bool found,
+inline void logrecord::apply(acqrel_atomic<row_type*>& value, bool found,
                              std::vector<lcdf::Json>& jrepo, threadinfo& ti) {
-    row_type** cur_value = &value;
+    acqrel_atomic<row_type*>* cur_value = &value;
     if (!found)
         *cur_value = 0;
 
     // find point to insert change (may be after some delta markers)
-    while (*cur_value && row_is_delta_marker(*cur_value)
-           && (*cur_value)->timestamp() > ts)
+    while ((*cur_value).load() && row_is_delta_marker(*cur_value)
+           && (*cur_value).load()->timestamp() > ts)
         cur_value = &row_get_delta_marker(*cur_value)->prev_;
 
     // check out of date
-    if (*cur_value && (*cur_value)->timestamp() >= ts)
+    if ((*cur_value).load() && (*cur_value).load()->timestamp() >= ts)
         return;
 
     // if not modifying, delete everything earlier
@@ -558,7 +558,7 @@ inline void logrecord::apply(row_type*& value, bool found,
     if (command == logcmd_replace)
         *cur_value = row_type::create1(val, ts, ti);
     else if (command != logcmd_modify
-             || (*cur_value && (*cur_value)->timestamp() == prev_ts)) {
+             || ((*cur_value).load() && (*cur_value).load()->timestamp() == prev_ts)) {
         lcdf::Json* end_req = parse_changeset(val, jrepo);
         if (command != logcmd_modify)
             *cur_value = row_type::create(jrepo.data(), end_req, ts, ti);
@@ -583,22 +583,22 @@ inline void logrecord::apply(row_type*& value, bool found,
     }
 
     // clean up
-    while (value && row_is_delta_marker(value)) {
-        row_type **prev = 0, **trav = &value;
-        while (*trav && row_is_delta_marker(*trav)) {
+    while (value.load() && row_is_delta_marker(value)) {
+        acqrel_atomic<row_type *>*prev = 0, *trav = &value;
+        while ((*trav).load() && row_is_delta_marker(*trav)) {
             prev = trav;
             trav = &row_get_delta_marker(*trav)->prev_;
         }
-        if (prev && *trav
-            && row_get_delta_marker(*prev)->prev_ts_ == (*trav)->timestamp()) {
+        if (prev && (*trav).load()
+            && row_get_delta_marker(*prev)->prev_ts_ == (*trav).load()->timestamp()) {
             row_type *old_prev = *prev;
             Str req = old_prev->col(0);
             req.s += sizeof(row_delta_marker<row_type>);
             req.len -= sizeof(row_delta_marker<row_type>);
             const lcdf::Json* end_req = parse_changeset(req, jrepo);
-            *prev = (*trav)->update(jrepo.data(), end_req, old_prev->timestamp() - 1, ti);
-            if (*prev != *trav)
-                (*trav)->deallocate(ti);
+            *prev = (*trav).load()->update(jrepo.data(), end_req, old_prev->timestamp() - 1, ti);
+            if ((*prev).load() != (*trav).load())
+                (*trav).load()->deallocate(ti);
             old_prev->deallocate(ti);
             ti.mark(tc_replay_remove_delta);
         } else

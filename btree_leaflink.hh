@@ -38,10 +38,10 @@ template <typename N> struct btree_leaflink<N, true> {
     template <typename SF>
     static inline N *lock_next(N *n, SF spin_function) {
         while (1) {
-            N *next = n->next_.ptr;
+            N *next = n->next_;
             if (!next
                 || (!is_marked(next)
-                    && bool_cmpxchg(&n->next_.ptr, next, mark(next))))
+                    && n->next_.compare_exchange_weak(next, mark(next))))
                 return next;
             spin_function();
         }
@@ -61,11 +61,11 @@ template <typename N> struct btree_leaflink<N, true> {
     static void link_split(N *n, N *nr, SF spin_function) {
         nr->prev_ = n;
         N *next = lock_next(n, spin_function);
-        nr->next_.ptr = next;
+        nr->next_ = next;
         if (next)
             next->prev_ = nr;
         fence();
-        n->next_.ptr = nr;
+        n->next_ = nr;
     }
 
     /** @brief Unlink @a n from the list.
@@ -85,14 +85,15 @@ template <typename N> struct btree_leaflink<N, true> {
         N *prev;
         while (1) {
             prev = n->prev_;
-            if (bool_cmpxchg(&prev->next_.ptr, n, mark(n)))
+            // if (bool_cmpxchg(&prev->next_, n, mark(n)))
+            if (prev->next_.compare_exchange_weak(n, mark(n)))
                 break;
             spin_function();
         }
         if (next)
             next->prev_ = prev;
         fence();
-        prev->next_.ptr = next;
+        prev->next_ = next;
     }
 };
 
@@ -105,19 +106,19 @@ template <typename N> struct btree_leaflink<N, false> {
     template <typename SF>
     static void link_split(N *n, N *nr, SF) {
         nr->prev_ = n;
-        nr->next_.ptr = n->next_.ptr;
-        n->next_.ptr = nr;
-        if (nr->next_.ptr)
-            nr->next_.ptr->prev_ = nr;
+        nr->next_ = n->next_;
+        n->next_ = nr;
+        if (nr->next_)
+            nr->next_->prev_ = nr;
     }
     static void unlink(N *n) {
         unlink(n, do_nothing());
     }
     template <typename SF>
     static void unlink(N *n, SF) {
-        if (n->next_.ptr)
-            n->next_.ptr->prev_ = n->prev_;
-        n->prev_->next_.ptr = n->next_.ptr;
+        if (n->next_)
+            n->next_->prev_ = n->prev_;
+        n->prev_->next_ = n->next_;
     }
 };
 

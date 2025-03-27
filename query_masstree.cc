@@ -46,11 +46,11 @@ static void treestats1(node_base<P>* n, unsigned height) {
         if (n->deleted())
             return;
         leaf<P> *lf = (leaf<P> *)n;
-        typename leaf<P>::permuter_type perm = lf->permutation_;
+        typename leaf<P>::permuter_type perm = lf->permutation_.load();
         sz = perm.size();
         for (int idx = 0; idx < sz; ++idx) {
             int p = perm[idx];
-            typename leaf<P>::leafvalue_type lv = lf->lv_[p];
+            typename leaf<P>::leafvalue_type lv(lf->lv_[p].value());
             if (!lv || !lf->is_layer(p))
                 ++heightcounts[height];
             else {

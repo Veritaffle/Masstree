@@ -207,9 +207,11 @@ inline const loginfo& logset::log(int i) const {
 template <typename R>
 struct row_delta_marker : public row_marker {
     kvtimestamp_t prev_ts_;
-    R *prev_;
+    acqrel_atomic<R *> prev_;
     char s_[0];
 };
+
+
 
 template <typename R>
 inline bool row_is_delta_marker(const R* row) {
@@ -220,6 +222,11 @@ inline bool row_is_delta_marker(const R* row) {
     } else
         return false;
 }
+template <typename R>
+inline bool row_is_delta_marker(acqrel_atomic<R*>& row) {
+    return row_is_delta_marker(row.load());
+}
+
 
 template <typename R>
 inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = false) {
@@ -228,5 +235,11 @@ inline row_delta_marker<R>* row_get_delta_marker(const R* row, bool force = fals
     return reinterpret_cast<row_delta_marker<R>*>
         (const_cast<char*>(row->col(0).s));
 }
+
+template <typename R>
+inline row_delta_marker<R>* row_get_delta_marker(acqrel_atomic<R*>& row, bool force = false) {
+    return row_get_delta_marker(row.load(), force);
+}
+
 
 #endif

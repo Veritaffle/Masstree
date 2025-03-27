@@ -48,7 +48,7 @@ bool tcursor<P>::find_insert(threadinfo& ti)
     if (n_->size() < n_->width) {
         kx_.p = permuter_type(n_->permutation_).back();
         // don't inappropriately reuse position 0, which holds the ikey_bound
-        if (likely(kx_.p != 0) || !n_->prev_ || n_->ikey_bound() == ka_.ikey()) {
+        if (likely(kx_.p != 0) || !n_->prev_.load() || n_->ikey_bound() == ka_.ikey()) {
             n_->assign(kx_.p, ka_, ti);
             return false;
         }
