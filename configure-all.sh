@@ -3,8 +3,8 @@
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_schedyield" )
 # VARIANTS=("beta" "atomicnv_signal" "atomicnv_thread" "atomicnv" "atomicnv_pause" )
 # VARIANTS=("atomicnv" "atomicnv_pause" "atomicnv_schedyield")
-VARIANTS=("stringbag_atomic" "stringbag_atomicref")
-# VARIANTS=("atomicinternode")
+# VARIANTS=("stringbag_atomic" "stringbag_atomicref")
+VARIANTS=("fullatomic")
 # VARIANTS=("beta")
 
 # CONFIGS=("debug" "release")
@@ -33,7 +33,7 @@ CONFIGFLAGS_STRINGBAG_BASE=$CONFIGFLAGS_ATOMICNV_PAUSE
 CONFIGFLAGS_STRINGBAG_ATOMIC=$CONFIGFLAGS_STRINGBAG_BASE"--with-stringbag_impl=atomic "
 CONFIGFLAGS_STRINGBAG_ATOMICREF=$CONFIGFLAGS_STRINGBAG_BASE" --with-stringbag_impl=atomicref "
 
-CONFIGFLAGS_ATOMICINTERNODE=$CONFIGFLAGS_STRINGBAG_ATOMIC"--with-internode_impl=atomic"
+CONFIGFLAGS_ATOMICINTERNODE=$CONFIGFLAGS_STRINGBAG_ATOMIC
 
 CONFIGFLAGS_DEBUG="--with-build_config=debug "
 CONFIGFLAGS_RELEASE="--with-build_config=release --disable-assertions --disable-preconditions --disable-invariants "
@@ -90,7 +90,7 @@ for variant in "${VARIANTS[@]}"; do
 			"stringbag_atomicref")
 				CONFIGFLAGS+=$CONFIGFLAGS_STRINGBAG_ATOMICREF
 				;;
-			"atomicinternode")
+			"fullatomic")
 				CONFIGFLAGS+=$CONFIGFLAGS_ATOMICINTERNODE
 				;;
 		esac
