@@ -225,7 +225,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
                 nn->make_layer_root();
             } else {
                 nn->set_parent(p);
-                p->child_[kp] = nn;     //  This is when it becomes visible
+                // p->child_[kp] = nn;     //  This is when it becomes visible
                 p->child_[kp].store(nn, SHUTUP_TSAN_MO_RELEASE);
             }
             atomic_thread_release_fence();
@@ -242,10 +242,10 @@ bool tcursor<P>::make_split(threadinfo& ti)
             }
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
-                p->assign(kp, xikey[sense], child);
-                // p->child_[kp + 1].store(child, )
-                atomic_thread_release_fence();
                 p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
+                p->assign(kp, xikey[sense], child);
+                p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
+                atomic_thread_release_fence();
                 p->nkeys_ = p->nkeys_ + 1;
             }
         }

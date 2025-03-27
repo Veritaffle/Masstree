@@ -86,7 +86,7 @@ class basic_table {
     inline void print(FILE* f = 0) const;
 
   private:
-    node_type* root_;
+    acqrel_atomic<node_type*> root_;
 
     template <typename H, typename F>
     int scan(H helper, Str firstkey, bool matchfirst,

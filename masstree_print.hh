@@ -198,7 +198,7 @@ void internode<P>::print(FILE* f, const char* prefix, int depth, int kdepth) con
 
 template <typename P>
 void basic_table<P>::print(FILE* f) const {
-    root_->print(f ? f : stdout, "", 0, 0);
+    root_.load()->print(f ? f : stdout, "", 0, 0);
 }
 
 } // namespace Masstree

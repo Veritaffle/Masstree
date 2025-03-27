@@ -289,12 +289,12 @@ struct destroy_rcu_callback : public P::threadinfo_type::mrcu_callback {
     void operator()(threadinfo& ti);
     static void make(node_base<P>* root, Str prefix, threadinfo& ti);
   private:
-    static inline relaxed_atomic<node_base<P>*>* link_ptr(node_base<P>* n);
-    static inline void enqueue(node_base<P>* n, relaxed_atomic<node_base<P>*>*& tailp);
+    static inline acqrel_atomic<node_base<P>*>* link_ptr(node_base<P>* n);
+    static inline void enqueue(node_base<P>* n, acqrel_atomic<node_base<P>*>*& tailp);
 };
 
 template <typename P>
-inline relaxed_atomic<node_base<P>*>* destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
+inline acqrel_atomic<node_base<P>*>* destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
     if (n->isleaf())
         return &static_cast<leaf_type*>(n)->parent_;
     else
@@ -303,7 +303,7 @@ inline relaxed_atomic<node_base<P>*>* destroy_rcu_callback<P>::link_ptr(node_bas
 
 template <typename P>
 inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
-                                             relaxed_atomic<node_base<P>*>*& tailp) {
+                                             acqrel_atomic<node_base<P>*>*& tailp) {
     *tailp = n;
     tailp = link_ptr(n);
 }
@@ -321,12 +321,12 @@ void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
         return;
     }
 
-    relaxed_atomic<node_base<P>*> workq;
-    relaxed_atomic<node_base<P>*>* tailp = &workq;
+    acqrel_atomic<node_base<P>*> workq;
+    acqrel_atomic<node_base<P>*>* tailp = &workq;
     enqueue(root_, tailp);
 
     while (node_base<P>* n = workq) {
-        relaxed_atomic<node_base<P>*>* linkp = link_ptr(n);
+        acqrel_atomic<node_base<P>*>* linkp = link_ptr(n);
         if (linkp != tailp) {
             workq = *linkp;
         } else {
@@ -357,7 +357,7 @@ void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
 
 template <typename P>
 void basic_table<P>::destroy(threadinfo& ti) {
-    if (root_) {
+    if (root_.load()) {
         void* data = ti.allocate(sizeof(destroy_rcu_callback<P>), memtag_masstree_gc);
         destroy_rcu_callback<P>* cb = new(data) destroy_rcu_callback<P>(root_);
         ti.rcu_register(cb);

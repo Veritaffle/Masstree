@@ -77,6 +77,14 @@ inline int ffs_msb(unsigned long long x) {
 
 //  THESIS: new standard stuff
 
+#if !NDEBUG
+#define debug_fprintf fprintf
+#else
+inline int debug_fprintf(FILE*, const char*, ...) {
+    return 0;
+}
+#endif
+
 using memory_order = std::memory_order;
 #define MO_RELAXED std::memory_order_relaxed
 #define MO_CONSUME std::memory_order_consume
@@ -403,11 +411,11 @@ public:
     //  TODO: xchg
     //  TODO: val_cmpxchg
 
-    // bool compare_exchange_weak(T& expected, T desired,
-    //                            std::memory_order success = MO_RELAXED,
-    //                            std::memory_order failure = MO_RELAXED) {
-    //     return _v.compare_exchange_weak(expected, desired, success, failure);
-    // }
+    bool compare_exchange_weak(T& expected, T desired,
+                               std::memory_order success = MO_RELEASE,
+                               std::memory_order failure = MO_RELEASE) {
+        return _v.compare_exchange_weak(expected, desired, success, failure);
+    }
     
     // T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
     //     return _v.fetch_add(addend, mo);
@@ -528,6 +536,8 @@ int atomic_memcmp(T ptr1, U ptr2, size_t num) {
                 //    std::is_same_v<U, ptr_using_relaxed_atomic_ref<const char>>));
     
     // debug_fprintf(stdout, "atomic_memcmp()\n");
+
+    static_assert(sizeof(T) == sizeof(U));
     static_assert(is_atomic_based_string<T> || is_atomic_based_string<U>);
 
     for (unsigned i = 0; i < num; ++i) {
@@ -544,6 +554,7 @@ int maybe_atomic_memcmp(T ptr1, U ptr2, size_t num) {
     // static_assert(sizeof(T) == 1, "T not one byte");
     // static_assert(sizeof(U) == 1, "U not one byte");
 
+    static_assert(sizeof(T) == sizeof(U));
     if constexpr (is_atomic_based_string<T> || is_atomic_based_string<U>)
         return atomic_memcmp(ptr1, ptr2, num);
     else
@@ -551,25 +562,28 @@ int maybe_atomic_memcmp(T ptr1, U ptr2, size_t num) {
 }
 
 template<typename T, typename U>
-void atomic_memcpy(T dest, U src, size_t count) {
+void atomic_memcpy(T dest, U src, size_t obj_count) {
     // static_assert((std::is_same_v<T, ptr_using_relaxed_atomic_ref<char>> ||
     //                std::is_same_v<U, ptr_using_relaxed_atomic_ref<const char>>));
     // debug_fprintf(stdout, "atomic_memcpy()\n");
 
+    static_assert(sizeof(T) == sizeof(U));
     static_assert(is_atomic_based_string<T> || is_atomic_based_string<U>);
 
+    // fprintf(stderr, "atomic_memcpy: %u\n", sizeof(T));
+
     if constexpr (is_atomic_based_string<T> && is_atomic_based_string<U>) {
-        for (unsigned i = 0; i < count; ++i) {
+        for (unsigned i = 0; i < obj_count; ++i) {
             dest[i].store(src[i].load());
         }
     }
     else if constexpr (is_atomic_based_string<T>) {
-        for (unsigned i = 0; i < count; ++i) {
+        for (unsigned i = 0; i < obj_count; ++i) {
             dest[i].store(src[i]);
         }
     }
     else if constexpr (is_atomic_based_string<U>) {
-        for (unsigned i = 0; i < count; ++i) {
+        for (unsigned i = 0; i < obj_count; ++i) {
             dest[i] = src[i].load();
         }
     }
@@ -578,35 +592,38 @@ void atomic_memcpy(T dest, U src, size_t count) {
 }
 
 template<typename T, typename U>
-void maybe_atomic_memcpy(T dest, U src, size_t count) {
+void maybe_atomic_memcpy(T dest, U src, size_t obj_count) {
     // static_assert(sizeof(T) == 1, "T not one byte");
     // static_assert(sizeof(U) == 1, "U not one byte");
     
+    static_assert(sizeof(T) == sizeof(U));
+
     if constexpr (is_atomic_based_string<T> || is_atomic_based_string<U>)
-        atomic_memcpy(dest, src, count);
+        atomic_memcpy(dest, src, obj_count);
     else
-        memcpy(dest, src, count);
+        memcpy(dest, src, obj_count);
 }
 
 template <typename T, typename U>
-void atomic_memmove(T d, U s, size_t count) {
+void atomic_memmove(T d, U s, size_t obj_count) {
     static_assert(sizeof(T) == sizeof(U));
-
-    size_t n = count / sizeof(T);
 
     if (d == s)
         return;
     
     if (d < s) {
-        for (size_t i = 0; i < n; ++i) {
+        for (size_t i = 0; i < obj_count; ++i) {
             d[i] = s[i];
+            // debug_fprintf(stderr, "%lx", s[i].load());
         }
     }
     else {
-        for (size_t i = n; i > 0; --i) {
+        for (size_t i = obj_count; i > 0; --i) {
             d[i - 1] = s[i - 1];
+            // debug_fprintf(stderr, "%lx ", s[i-1].load());
         }
     }
+    // debug_fprintf(stderr, "\n");
 }
 
 // template<typename T, typename U>
@@ -741,14 +758,6 @@ inline void nonatomic_relax_fence() {
 }
 
 
-
-#if !NDEBUG
-#define debug_fprintf fprintf
-#else
-inline int debug_fprintf(FILE*, const char*, ...) {
-    return 0;
-}
-#endif
 
 
 //  end THESIS
