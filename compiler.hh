@@ -295,7 +295,143 @@ private:
         //  see https://en.cppreference.com/w/cpp/compiler_support/26
 };
 
+template <typename T>
+struct acquire_atomic {
+public:
+    acquire_atomic() : _v() {
+    }
+    acquire_atomic(T v) : _v(v) {
+    }
 
+    T load(memory_order mo = MO_ACQUIRE) const {
+        return _v.load(mo);
+    }
+
+    //  This assumes you manually do store-releases via your own atomic_thread_fence.
+    acquire_atomic<T>& store(T v, memory_order mo = MO_RELAXED) {
+        _v.store(v, mo);
+        return *this;
+    }
+
+    //  TODO: are these safe to use freely?
+    operator T() const noexcept {
+        return load();
+    }
+
+    acquire_atomic<T>& operator=(const T v) {
+        return store(v);
+    }
+
+    acquire_atomic<T>& operator=(const acquire_atomic<T>& other) {
+        return store(other.load());
+    }
+
+    // class proxy {
+    //     T ptr_;
+    // public:
+    //     explicit proxy(T ptr) : ptr_(ptr) {}
+    //     T operator->() const { return ptr_; }
+    // };
+
+    // proxy operator->() const {
+    //     return proxy(load());
+    // }
+
+    //  TODO: xchg
+    //  TODO: val_cmpxchg
+
+    // bool compare_exchange_weak(T& expected, T desired,
+    //                            std::memory_order success = MO_RELAXED,
+    //                            std::memory_order failure = MO_RELAXED) {
+    //     return _v.compare_exchange_weak(expected, desired, success, failure);
+    // }
+    
+    // T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_add(addend, mo);
+    // }
+    // T fetch_and_and(T arg, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_and(arg, mo);
+    // }
+    // T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_or(arg, mo);
+    // }
+
+    bool is_lock_free() const {
+        return _v.is_lock_free();
+    }
+
+    acquire_atomic(const acquire_atomic<T>&) = delete;
+    acquire_atomic(acquire_atomic<T>&&) = delete;
+    // acquire_atomic<T>& operator=(const acquire_atomic<T>&) = delete;
+    acquire_atomic<T>& operator=(acquire_atomic<T>&&) = delete;
+    operator T*() = delete;
+    operator const T*() const = delete;
+private:
+    std::atomic<T> _v;
+};
+
+
+template <typename T>
+struct acqrel_atomic {
+public:
+    acqrel_atomic() : _v() {
+    }
+    acqrel_atomic(T v) : _v(v) {
+    }
+
+    T load(memory_order mo = MO_ACQUIRE) const {
+        return _v.load(mo);
+    }
+    acqrel_atomic<T>& store(T v, memory_order mo = MO_RELEASE) {
+        _v.store(v, mo);
+        return *this;
+    }
+
+    //  TODO: are these safe to use freely?
+    operator T() const noexcept {
+        return load();
+    }
+
+    acqrel_atomic<T>& operator=(const T v) {
+        return store(v);
+    }
+
+    acqrel_atomic<T>& operator=(const acqrel_atomic<T>& other) {
+        return store(other.load());
+    }
+
+    //  TODO: xchg
+    //  TODO: val_cmpxchg
+
+    // bool compare_exchange_weak(T& expected, T desired,
+    //                            std::memory_order success = MO_RELAXED,
+    //                            std::memory_order failure = MO_RELAXED) {
+    //     return _v.compare_exchange_weak(expected, desired, success, failure);
+    // }
+    
+    // T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_add(addend, mo);
+    // }
+    // T fetch_and_and(T arg, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_and(arg, mo);
+    // }
+    // T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
+    //     return _v.fetch_or(arg, mo);
+    // }
+
+    bool is_lock_free() const {
+        return _v.is_lock_free();
+    }
+
+    acqrel_atomic(const acqrel_atomic<T>&) = delete;
+    acqrel_atomic(acqrel_atomic<T>&&) = delete;
+    // acqrel_atomic<T>& operator=(const acqrel_atomic<T>&) = delete;
+    acqrel_atomic<T>& operator=(acqrel_atomic<T>&&) = delete;
+    operator T*() = delete;
+    operator const T*() const = delete;
+private:
+    std::atomic<T> _v;
+};
 
 
 
@@ -488,141 +624,6 @@ void maybe_atomic_memmove(T dest, U src, size_t count) {
 
 
 
-
-
-
-
-
-
-
-
-
-template <typename T>
-struct acquire_atomic {
-public:
-    acquire_atomic() : _v() {
-    }
-    acquire_atomic(T v) : _v(v) {
-    }
-
-    T load(memory_order mo = MO_ACQUIRE) const {
-        return _v.load(mo);
-    }
-
-    //  This assumes you manually do store-releases via your own atomic_thread_fence.
-    acquire_atomic<T>& store(T v, memory_order mo = MO_RELAXED) {
-        _v.store(v, mo);
-        return *this;
-    }
-
-    //  TODO: are these safe to use freely?
-    operator T() const noexcept {
-        return load();
-    }
-
-    acquire_atomic<T>& operator=(const T v) {
-        return store(v);
-    }
-
-    acquire_atomic<T>& operator=(const acquire_atomic<T>& other) {
-        return store(other.load());
-    }
-
-    //  TODO: xchg
-    //  TODO: val_cmpxchg
-
-    // bool compare_exchange_weak(T& expected, T desired,
-    //                            std::memory_order success = MO_RELAXED,
-    //                            std::memory_order failure = MO_RELAXED) {
-    //     return _v.compare_exchange_weak(expected, desired, success, failure);
-    // }
-    
-    // T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_add(addend, mo);
-    // }
-    // T fetch_and_and(T arg, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_and(arg, mo);
-    // }
-    // T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_or(arg, mo);
-    // }
-
-    bool is_lock_free() const {
-        return _v.is_lock_free();
-    }
-
-    acquire_atomic(const acquire_atomic<T>&) = delete;
-    acquire_atomic(acquire_atomic<T>&&) = delete;
-    // acquire_atomic<T>& operator=(const acquire_atomic<T>&) = delete;
-    acquire_atomic<T>& operator=(acquire_atomic<T>&&) = delete;
-    operator T*() = delete;
-    operator const T*() const = delete;
-private:
-    std::atomic<T> _v;
-};
-
-
-template <typename T>
-struct acqrel_atomic {
-public:
-    acqrel_atomic() : _v() {
-    }
-    acqrel_atomic(T v) : _v(v) {
-    }
-
-    T load(memory_order mo = MO_ACQUIRE) const {
-        return _v.load(mo);
-    }
-    acqrel_atomic<T>& store(T v, memory_order mo = MO_RELEASE) {
-        _v.store(v, mo);
-        return *this;
-    }
-
-    //  TODO: are these safe to use freely?
-    operator T() const noexcept {
-        return load();
-    }
-
-    acqrel_atomic<T>& operator=(const T v) {
-        return store(v);
-    }
-
-    acqrel_atomic<T>& operator=(const acqrel_atomic<T>& other) {
-        return store(other.load());
-    }
-
-    //  TODO: xchg
-    //  TODO: val_cmpxchg
-
-    // bool compare_exchange_weak(T& expected, T desired,
-    //                            std::memory_order success = MO_RELAXED,
-    //                            std::memory_order failure = MO_RELAXED) {
-    //     return _v.compare_exchange_weak(expected, desired, success, failure);
-    // }
-    
-    // T fetch_and_add(T addend, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_add(addend, mo);
-    // }
-    // T fetch_and_and(T arg, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_and(arg, mo);
-    // }
-    // T fetch_and_or(T arg, memory_order mo = MO_RELAXED) {
-    //     return _v.fetch_or(arg, mo);
-    // }
-
-    bool is_lock_free() const {
-        return _v.is_lock_free();
-    }
-
-    acqrel_atomic(const acqrel_atomic<T>&) = delete;
-    acqrel_atomic(acqrel_atomic<T>&&) = delete;
-    // acqrel_atomic<T>& operator=(const acqrel_atomic<T>&) = delete;
-    acqrel_atomic<T>& operator=(acqrel_atomic<T>&&) = delete;
-    operator T*() = delete;
-    operator const T*() const = delete;
-private:
-    std::atomic<T> _v;
-};
 
 
 
