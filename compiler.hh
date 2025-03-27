@@ -589,34 +589,36 @@ void maybe_atomic_memcpy(T dest, U src, size_t count) {
 }
 
 template <typename T, typename U>
-void atomic_memmove(T dest, U src, size_t count) {
-    static_assert(is_atomic_based_string<T> || is_atomic_based_string<U>);
+void atomic_memmove(T d, U s, size_t count) {
+    static_assert(sizeof(T) == sizeof(U));
 
-    if (dest == src)
+    size_t n = count / sizeof(T);
+
+    if (d == s)
         return;
     
-    if (dest < src) {
-        for (size_t i = 0; i < count; ++i) {
-            dest[i] = src[i];
+    if (d < s) {
+        for (size_t i = 0; i < n; ++i) {
+            d[i] = s[i];
         }
     }
     else {
-        for (size_t i = count; i > 0; --i) {
-            dest[i - 1] = src[i - 1];
+        for (size_t i = n; i > 0; --i) {
+            d[i - 1] = s[i - 1];
         }
     }
 }
 
-template<typename T, typename U>
-void maybe_atomic_memmove(T dest, U src, size_t count) {
-    // static_assert(sizeof(T) == 1, "T not one byte");
-    // static_assert(sizeof(U) == 1, "U not one byte");
+// template<typename T, typename U>
+// void maybe_atomic_memmove(T dest, U src, size_t count) {
+//     // static_assert(sizeof(T) == 1, "T not one byte");
+//     // static_assert(sizeof(U) == 1, "U not one byte");
     
-    if constexpr (is_atomic_based_string<T> || is_atomic_based_string<U>)
-        atomic_memmove(dest, src, count);
-    else
-        memmove(dest, src, count);
-}
+//     if constexpr (is_atomic_based_string<T> || is_atomic_based_string<U>)
+//         atomic_memmove(dest, src, count);
+//     else
+//         memmove(dest, src, count);
+// }
 
 
 

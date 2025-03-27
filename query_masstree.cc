@@ -64,8 +64,8 @@ static void treestats1(node_base<P>* n, unsigned height) {
         internode<P> *in = (internode<P> *) n;
         sz = in->size();
         for (int i = 0; i <= sz; ++i)
-            if (in->child_[i])
-                treestats1(in->child_[i], height + 1);
+            if (in->child_[i].load())
+                treestats1(in->child_[i].load(), height + 1);
     }
     assert((size_t) sz < arraysize(fillcounts));
     fillcounts[sz] += 1;

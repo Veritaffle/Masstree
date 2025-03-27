@@ -96,6 +96,7 @@ class node_base : public make_nodeversion<P>::type {
     void print(FILE* f, const char* prefix, int depth, int kdepth) const;
 };
 
+
 template <typename P>
 class internode : public node_base<P> {
   public:
@@ -106,38 +107,47 @@ class internode : public node_base<P> {
     typedef typename key_bound<width, P::bound_method>::type bound_type;
     typedef typename P::threadinfo_type threadinfo;
 
-    uint8_t nkeys_;
+    relaxed_atomic<uint8_t> nkeys_;
     uint32_t height_;
-    ikey_type ikey0_[width];                            //  uint64_t per struct nodeparams
-    node_base<P>* child_[width + 1];                    //  pointer to node_base (!)
-    node_base<P>* parent_;                              //  pointer to node_base (!)
+    relaxed_atomic<ikey_type> ikey0_[width];                            //  uint64_t per struct nodeparams
+    acquire_atomic<node_base<P>*> child_[width + 1];                    //  pointer to node_base (!)
+    relaxed_atomic<node_base<P>*> parent_;                              //  pointer to node_base (!)
     kvtimestamp_t created_at_[P::debug_level > 0];      //  uint64_t per timestamp.hh
 
     internode(uint32_t height)
         : node_base<P>(false), nkeys_(0), height_(height), parent_() {
     }
 
-#if defined(NODEVERSION_IMPL_ATOMICALLFENCES) || defined(NODEVERSION_IMPL_ATOMIC)
-    void non_atomics_copy(const internode<P>& other) {
-        size_t pod = sizeof(internode<P>) - sizeof(node_base<P>);
-        // debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
-            // reinterpret_cast<uintptr_t>(&(this->nkeys_)),
-            // reinterpret_cast<uintptr_t>(this));
-        memcpy(&(this->nkeys_), &(other.nkeys_), pod);
+    // void non_atomics_copy(const internode<P>& other) {
+    //     size_t pod = sizeof(internode<P>) - sizeof(node_base<P>);
+    //     // debug_fprintf(stderr, "internode(): %lu %lu %lu %lu\n", sizeof(internode<P>), sizeof(node_base<P>),
+    //         // reinterpret_cast<uintptr_t>(&(this->nkeys_)),
+    //         // reinterpret_cast<uintptr_t>(this));
+    //     memcpy(&(this->nkeys_), &(other.nkeys_), pod);
+    // }
+
+    void copy_internode_fields(const internode<P>& other) {
+        nkeys_ = other.nkeys_;
+        height_ = other.height_;
+        for (int i = 0; i < width; ++i) {
+            ikey0_[i] = other.ikey0_[i];
+            child_[i] = other.child_[i];
+        }
+        parent_ = other.parent_;
+        if (P::debug_level > 0)
+            created_at_[0] = other.created_at_[0];
     }
 
     internode(const internode<P>& other)
         : node_base<P>(other.version_value()) {
-        non_atomics_copy(other);
-
+            copy_internode_fields(other);
     }
 
     internode<P>& operator=(const internode<P>& other) {
         this->assign_version(other);
-        non_atomics_copy(other);
+        copy_internode_fields(other);
         return *this;
     }
-#endif
 
     static internode<P>* make(uint32_t height, threadinfo& ti) {
         void* ptr = ti.pool_allocate(sizeof(internode<P>),
@@ -146,6 +156,7 @@ class internode : public node_base<P> {
         assert(n);
         if (P::debug_level > 0)
             n->created_at_[0] = ti.operation_timestamp();
+        n->child_[0].store(0, SHUTUP_TSAN_MO_RELEASE);
         return n;
     }
 
@@ -192,18 +203,19 @@ class internode : public node_base<P> {
     void shift_from(int p, const internode<P>* x, int xp, int n) {
         masstree_precondition(x != this);
         if (n) {
-            memcpy(ikey0_ + p, x->ikey0_ + xp, sizeof(ikey0_[0]) * n);
-            memcpy(child_ + p + 1, x->child_ + xp + 1, sizeof(child_[0]) * n);
+            atomic_memcpy(ikey0_ + p, x->ikey0_ + xp, sizeof(ikey0_[0]) * n);
+            atomic_memcpy(child_ + p + 1, x->child_ + xp + 1, sizeof(child_[0]) * n);
         }
     }
+
     void shift_up(int p, int xp, int n) {
-        memmove(ikey0_ + p, ikey0_ + xp, sizeof(ikey0_[0]) * n);
-        for (node_base<P> **a = child_ + p + n, **b = child_ + xp + n; n; --a, --b, --n)
+        atomic_memmove(ikey0_ + p, ikey0_ + xp, sizeof(ikey0_[0]) * n);
+        for (acquire_atomic<node_base<P>*> *a = child_ + p + n, *b = child_ + xp + n; n; --a, --b, --n)
             *a = *b;
     }
     void shift_down(int p, int xp, int n) {
-        memmove(ikey0_ + p, ikey0_ + xp, sizeof(ikey0_[0]) * n);
-        for (node_base<P> **a = child_ + p + 1, **b = child_ + xp + 1; n; ++a, ++b, --n)
+        atomic_memmove(ikey0_ + p, ikey0_ + xp, sizeof(ikey0_[0]) * n);
+        for (acquire_atomic<node_base<P>*> *a = child_ + p + 1, *b = child_ + xp + 1; n; ++a, ++b, --n)
             *a = *b;
     }
 
@@ -299,7 +311,7 @@ class leaf : public node_base<P> {
         uintptr_t x;
     } next_;                                                        //  union (!), which could be a pointer to leaf<P> (!)
     leaf<P>* prev_;                                                 //  pointer to leaf<P>
-    node_base<P>* parent_;                                          //  pointer to node_base<P>
+    relaxed_atomic<node_base<P>*> parent_;                                          //  pointer to node_base<P>
     phantom_epoch_type phantom_epoch_[P::need_phantom_epoch];       //  uint64_t per struct nodeparams
     kvtimestamp_t created_at_[P::debug_level > 0];                  //  uint64_t per timestamp.hh
     internal_ksuf_type iksuf_[0];                                   //  "array" of class stringbag<uint8_t> (!)

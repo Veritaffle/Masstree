@@ -161,7 +161,7 @@ int internode<P>::split_into(internode<P>* nr, int p, ikey_type ka,
     }
 
     for (int i = 0; i <= nr->nkeys_; ++i) {
-        nr->child_[i]->set_parent(nr);
+        nr->child_[i].load()->set_parent(nr);
     }
 
     this->mark_split();
@@ -173,7 +173,6 @@ int internode<P>::split_into(internode<P>* nr, int p, ikey_type ka,
         return -1;
     }
 }
-
 
 template <typename P>
 bool tcursor<P>::make_split(threadinfo& ti)
@@ -198,7 +197,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
     child->assign_version(*n_);
     ikey_type xikey[2];
     int split_type = n_->split_into(static_cast<leaf_type*>(child),
-                                    this, xikey[0], ti);
+                                    this, xikey[0], ti);        //  split step 2
     unsigned sense = 0;
     node_type* n = n_;
     uint32_t height = 0;
@@ -212,24 +211,29 @@ bool tcursor<P>::make_split(threadinfo& ti)
         int kp = -1;
         if (n->parent_exists(p)) {
             kp = internode_type::bound_type::upper(xikey[sense], *p);
-            p->mark_insert();
+            p->mark_insert();       //  split step 3
         }
 
         if (kp < 0 || p->height_ > height + 1) {
+            //  parent does not exist or is further up?
             internode_type *nn = internode_type::make(height + 1, ti);
             nn->child_[0] = n;
             nn->assign(0, xikey[sense], child);
             nn->nkeys_ = 1;
             if (kp < 0) {
+                //  parent does not exist
                 nn->make_layer_root();
             } else {
                 nn->set_parent(p);
-                p->child_[kp] = nn;
+                p->child_[kp] = nn;     //  This is when it becomes visible
+                p->child_[kp].store(nn, SHUTUP_TSAN_MO_RELEASE);
             }
-            fence();
+            atomic_thread_release_fence();
             n->set_parent(nn);
         } else {
+            //  parent exists
             if (p->size() >= p->width) {
+                //  p is full
                 next_child = internode_type::make(height + 1, ti);
                 next_child->assign_version(*p);
                 next_child->mark_nonroot();
@@ -239,8 +243,10 @@ bool tcursor<P>::make_split(threadinfo& ti)
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
                 p->assign(kp, xikey[sense], child);
-                fence();
-                ++p->nkeys_;
+                // p->child_[kp + 1].store(child, )
+                atomic_thread_release_fence();
+                p->child_[kp + 1].store(child, SHUTUP_TSAN_MO_RELEASE);
+                p->nkeys_ = p->nkeys_ + 1;
             }
         }
 

@@ -481,6 +481,17 @@ AS_CASE([$ac_stringbag_impl],
     [*], [AC_MSG_ERROR([Invalid stringbag_impl: $ac_stringbag_impl.])]
 )
 
+# AC_ARG_WITH([internode_impl],
+#     AS_HELP_STRING([--with-internode_impl=VALUE], [set implementation for stringbag]),
+#     [ac_internode_impl=$withval],
+#     [ac_internode_impl=original]
+# )
+# AS_CASE([$ac_internode_impl],
+#     [original], [AC_DEFINE_UNQUOTED([INTERNODE_IMPL_ORIGINAL], [1], [Define if stringbag should use the original, non-atomic implementation.])],
+#     [atomic], [AC_DEFINE_UNQUOTED([INTERNODE_IMPL_ATOMIC], [1], [Define if stringbag should use the atomic implementation.])],
+#     [*], [AC_MSG_ERROR([Invalid internode_impl: $ac_internode_impl.])]
+# )
+
 
 # AC_ARG_ENABLE([atomic_nodeversion],
 #     [AS_HELP_STRING([--enable-atomic_nodeversion], [enable usage of atomic nodeversion])])

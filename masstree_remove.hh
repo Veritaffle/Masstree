@@ -20,6 +20,7 @@
 #include "circular_int.hh"
 namespace Masstree {
 
+
 template <typename P>
 bool tcursor<P>::gc_layer(threadinfo& ti)
 {
@@ -229,10 +230,10 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
             replacement->set_parent(p);
         } else if (kp > 0) {
             p->shift_down(kp - 1, kp, p->nkeys_ - kp);
-            --p->nkeys_;
+            p->nkeys_ = p->nkeys_ - 1;
         }
 
-        if (kp <= 1 && p->nkeys_ > 0 && !p->child_[0]) {
+        if (kp <= 1 && p->nkeys_ > 0 && !(p->child_[0].load())) {
             redirect(p, ikey, p->ikey0_[0], ti);
             ikey = p->ikey0_[0];
         }
@@ -240,7 +241,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
         n->unlock();
         n = p;
 
-        if (p->nkeys_ || p->is_root()) {
+        if (p->nkeys_.load() || p->is_root()) {
             break;
         }
 
@@ -271,7 +272,7 @@ void tcursor<P>::redirect(internode_type* n, ikey_type ikey,
             p->ikey0_[kp - 1] = replacement_ikey;
         }
         n = p;
-    } while (kp == 0 || (kp == 1 && !n->child_[0]));
+    } while (kp == 0 || (kp == 1 && !(n->child_[0].load())));
     n->unlock();
 }
 
@@ -288,12 +289,12 @@ struct destroy_rcu_callback : public P::threadinfo_type::mrcu_callback {
     void operator()(threadinfo& ti);
     static void make(node_base<P>* root, Str prefix, threadinfo& ti);
   private:
-    static inline node_base<P>** link_ptr(node_base<P>* n);
-    static inline void enqueue(node_base<P>* n, node_base<P>**& tailp);
+    static inline relaxed_atomic<node_base<P>*>* link_ptr(node_base<P>* n);
+    static inline void enqueue(node_base<P>* n, relaxed_atomic<node_base<P>*>*& tailp);
 };
 
 template <typename P>
-inline node_base<P>** destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
+inline relaxed_atomic<node_base<P>*>* destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
     if (n->isleaf())
         return &static_cast<leaf_type*>(n)->parent_;
     else
@@ -302,7 +303,7 @@ inline node_base<P>** destroy_rcu_callback<P>::link_ptr(node_base<P>* n) {
 
 template <typename P>
 inline void destroy_rcu_callback<P>::enqueue(node_base<P>* n,
-                                             node_base<P>**& tailp) {
+                                             relaxed_atomic<node_base<P>*>*& tailp) {
     *tailp = n;
     tailp = link_ptr(n);
 }
@@ -320,12 +321,12 @@ void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
         return;
     }
 
-    node_base<P>* workq;
-    node_base<P>** tailp = &workq;
+    relaxed_atomic<node_base<P>*> workq;
+    relaxed_atomic<node_base<P>*>* tailp = &workq;
     enqueue(root_, tailp);
 
     while (node_base<P>* n = workq) {
-        node_base<P>** linkp = link_ptr(n);
+        relaxed_atomic<node_base<P>*>* linkp = link_ptr(n);
         if (linkp != tailp) {
             workq = *linkp;
         } else {
@@ -345,8 +346,8 @@ void destroy_rcu_callback<P>::operator()(threadinfo& ti) {
         } else {
             internode_type* in = static_cast<internode_type*>(n);
             for (int i = 0; i != in->size() + 1; ++i) {
-                if (in->child_[i])
-                    enqueue(in->child_[i], tailp);
+                if (in->child_[i].load())
+                    enqueue(in->child_[i].load(), tailp);
             }
             in->deallocate(ti);
         }
