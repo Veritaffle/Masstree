@@ -110,7 +110,8 @@ bool tcursor<P>::make_new_layer(threadinfo& ti) {
     // face of concurrent lockless readers? Mark insertion so they
     // retry.
     n_->mark_insert();
-    fence();
+    // fence();
+    atomic_signal_fence();
     //  TODO: this assignment should be a release op
     if (twig_tail != n_)
         twig_tail->lv_[0] = nl;
@@ -132,7 +133,7 @@ void tcursor<P>::finish_insert()
     permuter_type perm(n_->permutation_);
     masstree_invariant(perm.back() == kx_.p);
     perm.insert_from_back(kx_.i);
-    fence();
+    atomic_thread_release_fence();
     n_->permutation_ = perm.value();
 }
 

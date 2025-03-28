@@ -88,7 +88,8 @@ bool tcursor<P>::find_locked(threadinfo& ti)
 
     n_->prefetch();
     perm = n_->permutation();
-    fence();    //  TODO: why was this put here?
+    // fence();    //  TODO: why was this put here?
+    atomic_signal_fence();
     kx_ = leaf<P>::bound_type::lower(ka_, *n_);
     
     if (kx_.p >= 0) {

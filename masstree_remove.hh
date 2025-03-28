@@ -200,7 +200,7 @@ bool tcursor<P>::remove_leaf(leaf_type* leaf, node_type* root,
                && !bool_cmpxchg(&prev->phantom_epoch_[0], prev_ts, leaf->phantom_epoch())) {
             prev_ts = prev->phantom_epoch();
         }
-        fence();
+        atomic_signal_fence();
         if (prev == leaf->prev_) {
             break;
         }

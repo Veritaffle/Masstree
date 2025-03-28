@@ -73,7 +73,7 @@ void leaf<P>::print(FILE *f, const char *prefix, int depth, int kdepth) const
     permuter_type perm;
     do {
         v = *this;
-        fence();
+        atomic_signal_fence();
         perm = permutation_.load();
     } while (this->has_changed(v));
     int indent = 2 * depth;

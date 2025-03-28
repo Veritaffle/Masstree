@@ -627,7 +627,7 @@ internode<P>* node_base<P>::locked_parent(threadinfo& ti) const
             break;
         }
         p->unlock(pv);
-        relax_fence();
+        atomic_signal_relax_fence();
     }
     return static_cast<internode<P>*>(p);
 }
@@ -850,7 +850,7 @@ void leaf<P>::assign_ksuf(int p, S s, bool initializing, threadinfo& ti) {
     }
     bool ok = nksuf->assign(p, s);
     assert(ok); (void) ok;
-    fence();
+    atomic_signal_fence();
 
     // removed ksufs aren't copied to the new ksuf, but observers
     // might need them. We ensure that observers must retry by
@@ -860,7 +860,7 @@ void leaf<P>::assign_ksuf(int p, S s, bool initializing, threadinfo& ti) {
     masstree_invariant(modstate_ != modstate_remove);
 
     ksuf_ = nksuf;
-    fence();
+    atomic_thread_release_fence();
 
     // ksuf_.store(nksuf, SHUTUP_TSAN_MO_RELEASE);
     //  TODO

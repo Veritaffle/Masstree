@@ -64,7 +64,7 @@ template <typename N> struct btree_leaflink<N, true> {
         nr->next_ = next;
         if (next)
             next->prev_ = nr;
-        fence();
+        atomic_thread_release_fence();
         n->next_ = nr;
     }
 
@@ -92,7 +92,7 @@ template <typename N> struct btree_leaflink<N, true> {
         }
         if (next)
             next->prev_ = prev;
-        fence();
+        atomic_thread_release_fence();
         prev->next_ = next;
     }
 };

@@ -40,17 +40,17 @@ class identity_kpermuter {
 
 template <int C> struct sized_kpermuter_info {};
 template <> struct sized_kpermuter_info<0> {
-    typedef relaxed_atomic<uint16_t> storage_type;
+    typedef acqrel_atomic<uint16_t> storage_type;
     typedef unsigned value_type;
     enum { initial_value = 0x0120U, full_value = 0x2100U };
 };
 template <> struct sized_kpermuter_info<1> {
-    typedef relaxed_atomic<uint32_t> storage_type;
+    typedef acqrel_atomic<uint32_t> storage_type;
     typedef unsigned value_type;
     enum { initial_value = 0x01234560U, full_value = 0x65432100U };
 };
 template <> struct sized_kpermuter_info<2> {
-    typedef relaxed_atomic<uint64_t> storage_type;
+    typedef acqrel_atomic<uint64_t> storage_type;
     typedef uint64_t value_type;
     enum { initial_value = (uint64_t) 0x0123456789ABCDE0ULL,
            full_value = (uint64_t) 0xEDCBA98765432100ULL };

@@ -198,7 +198,7 @@ int scanstackelt<P>::find_initial(H& helper, key_type& ka, bool emit_equal,
     kx = helper.lower_with_position(ka, this);
     if (kx.p >= 0) {
         keylenx = n_->keylenx_[kx.p];
-        fence();
+        atomic_signal_fence();
         entry = n_->lv_[kx.p];
         entry.prefetch(keylenx);
         if (n_->keylenx_has_ksuf(keylenx)) {
@@ -270,7 +270,7 @@ int scanstackelt<P>::find_next(H &helper, key_type &ka, leafvalue_type &entry)
         ikey_type ikey = n_->ikey0_[kp];
         int keylenx = n_->keylenx_[kp];
         int keylen = keylenx;
-        fence();
+        atomic_signal_fence();
         entry = n_->lv_[kp];
         entry.prefetch(keylenx);
         if (n_->keylenx_has_ksuf(keylenx))

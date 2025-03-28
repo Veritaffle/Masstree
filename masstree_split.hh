@@ -187,7 +187,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
         kx_.p = perm.back();
         if (kx_.p != 0) {
             n_->permutation_ = perm.value();
-            fence();
+            atomic_signal_fence();
             n_->assign(kx_.p, ka_, ti);
             return false;
         }
@@ -238,7 +238,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
                 next_child->assign_version(*p);
                 next_child->mark_nonroot();
                 kp = p->split_into(next_child, kp, xikey[sense],
-                                   child, xikey[sense ^ 1], split_type);
+                                   child, xikey[sense ^ 1], split_type);    //  split parent
             }
             if (kp >= 0) {
                 p->shift_up(kp + 1, kp, p->size() - kp);
@@ -266,7 +266,7 @@ bool tcursor<P>::make_split(threadinfo& ti)
                 perml.exchange(perml.size(), nl->width - 1);
             }
             nl->mark_split();
-            nl->permutation_ = perml.value();
+            nl->permutation_ = perml.value(); //  TODO: this is the release
             // account for split
             if (split_type == 0) {
                 kx_.p = perml.back();
